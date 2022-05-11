@@ -14,6 +14,8 @@
 
 #include <arpa/inet.h>
 
+#include "buffer.h"
+
 using std::dec;
 using std::hex;
 using std::ifstream;
@@ -32,7 +34,7 @@ struct options
 	list<string> input_files;
 };
 
-bool read_file_to_buffer(const string& filename, vector<uint8_t>& buf)
+bool read_file_to_buffer(const string& filename, arraybuf& buf)
 {
 	uint32_t length;
 	ifstream infile(filename, std::ios::in | std::ios::binary);
@@ -50,14 +52,14 @@ bool read_file_to_buffer(const string& filename, vector<uint8_t>& buf)
 
 	// Read the file
 	infile.seekg(0, std::ios::beg);
-	infile.read((char*)buf.data(), length);
+	infile.read((char*)&buf[0], length);
 
 	infile.close();
 
 	return true;
 }
 
-void save_file(const string& filename, const vector<uint8_t>& buf)
+void save_file(const string& filename, const buffer& buf)
 {
 	ofstream outfile(filename, std::ios::out | std::ios::binary);
 
@@ -66,46 +68,8 @@ void save_file(const string& filename, const vector<uint8_t>& buf)
 		return;
 	}
 
-	outfile.write((char*)buf.data(), buf.capacity());
+	outfile.write((char*)&buf[0], buf.length());
 	outfile.close();
-}
-
-list<uint32_t> find_all(const uint8_t* buf, uint32_t len, const string& needle)
-{
-	list<uint32_t> ret;
-	const uint32_t needle_len = needle.length();
-
-	if (needle_len > len) {
-		return ret;
-	}
-
-	for (uint32_t i = 0; i < len - needle_len; ++i) {
-		if (memcmp(needle.c_str(), &buf[i], needle_len) == 0) {
-			ret.push_back(i);
-			i += (needle_len - 1);
-		}
-	}
-
-	return ret;
-}
-
-list<uint32_t> find_all(const uint8_t* buf, uint32_t len, const vector<uint8_t>& needle)
-{
-	list<uint32_t> ret;
-	const uint32_t needle_len = needle.size();
-
-	if (needle_len > len) {
-		return ret;
-	}
-
-	for (uint32_t i = 0; i < len - needle_len; ++i) {
-		if (memcmp(needle.data(), &buf[i], needle_len) == 0) {
-			ret.push_back(i);
-			i += (needle_len - 1);
-		}
-	}
-
-	return ret;
 }
 
 void usage()
@@ -144,6 +108,7 @@ bool get_opts(int argc, char** argv, options& opts)
 				opts.search_bytes[idx] = byte;
 				got_needle = true;
 			}
+				break;
             default:
                 std::cerr << "Unrecognized option " << argv[i] << '\n';
                 return false;
@@ -174,11 +139,8 @@ int main(int argc, char** argv)
 	const char red_off[] = "\033[0m";
 	/*
 	 * TODO:
-	 *  - Byte buffer as input
 	 *  - Find and replace
 	 *  - Accept input from pipe
-	 *  - Take multiple input files
-	 *  - Unify find_all implementations
 	 *  - Variable context length
 	 */
 	options opts;
@@ -188,12 +150,13 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
+	// Search each input file
 	for (const string& savefile : opts.input_files) {
 		if (opts.input_files.size() > 1) {
 			std::cout << savefile << ':' << std::endl;
 		}
 		// Read the file
-		vector<uint8_t> buf;
+		arraybuf buf;
 		if (!read_file_to_buffer(savefile, buf)) {
 			std::cerr << "Could not read file " << savefile << std::endl;
 			return -2;
@@ -203,10 +166,10 @@ int main(int argc, char** argv)
 		list<uint32_t> offsets;
 		uint32_t needle_len = 0;
 		if (!opts.search_string.empty()) {
-			offsets = find_all(buf.data(), buf.capacity(), opts.search_string);
+			offsets = buf.find_all(strbuf(opts.search_string));
 			needle_len = opts.search_string.length();
 		} else {
-			offsets = find_all(buf.data(), buf.capacity(), opts.search_bytes);
+			offsets = buf.find_all(arraybuf(opts.search_bytes.data(), opts.search_bytes.size()));
 			needle_len = opts.search_bytes.size();
 		}
 		if (needle_len == 0) {
@@ -222,14 +185,13 @@ int main(int argc, char** argv)
 				start -= context_before;
 			} else {
 				start = 0;
-				// len -= context_before - start;
 			}
 
 			// A line should look like:
 			// <offset>:  <context-before><match><context-after>    | ASCII........  |
 			std::cout << hex << setw(8) << setfill(' ') << start << ":  ";
 			for (uint32_t i = start; i < start + len; ++i) {
-				if (i > buf.capacity()) {
+				if (i > buf.length()) {
 					break;
 				}
 				if (i == offset) {
@@ -245,7 +207,7 @@ int main(int argc, char** argv)
 
 			// Now do it again to print the ASCII representation...
 			for (uint32_t i = start; i < start + len; ++i) {
-				if (i > buf.capacity()) {
+				if (i > buf.length()) {
 					break;
 				}
 				if (i == offset) {

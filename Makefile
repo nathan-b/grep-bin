@@ -4,6 +4,7 @@ CPPFLAGS=-Wall -Werror
 OUTPUT=gb
 
 CPPFILES=main.cpp
+TESTFILES=buftest.cpp
 LIBS=
 
 debug: $(CPPFILES)
@@ -12,5 +13,7 @@ debug: $(CPPFILES)
 release: $(CPPFILES)
 	g++ $(CPPFLAGS) $(NDBFLAGS) -o $(OUTPUT) $(CPPFILES) $(LIBS)
 
+test: $(TESTFILES)
+	g++ $(CPPFLAGS) $(DBFLAGS) -o tests $(TESTFILES) $(LIBS)
 clean:
 	-rm $(OUTPUT)
