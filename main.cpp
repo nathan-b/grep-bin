@@ -131,12 +131,66 @@ bool get_opts(int argc, char** argv, options& opts)
 	return got_needle && got_haystack;
 }
 
+void print_match(const buffer& buf, 
+                 uint32_t offset, 
+				 uint32_t needle_len,
+				 uint32_t context_before, 
+				 uint32_t context_after)
+{
+	const char red_on[] = "\x1B[31m";
+	const char red_off[] = "\033[0m";
+
+	uint32_t len = context_before + context_after + needle_len;
+	uint32_t start = offset;
+	if (start > context_before) {
+		start -= context_before;
+	} else {
+		start = 0;
+	}
+
+	// A line should look like:
+	// <offset>:  <context-before><match><context-after>    | ASCII........  |
+	std::cout << hex << setw(8) << setfill(' ') << start << ":  ";
+	for (uint32_t i = start; i < start + len; ++i) {
+		if (i > buf.length()) {
+			break;
+		}
+		if (i == offset) {
+			std::cout << red_on;
+		}
+		if (i == offset + needle_len) {
+			std::cout << red_off;
+		}
+		std::cout << hex << setw(2) << setfill('0') << (int)buf[i] << ' ';
+	}
+
+	std::cout << "   | ";
+
+	// Now do it again to print the ASCII representation...
+	for (uint32_t i = start; i < start + len; ++i) {
+		if (i > buf.length()) {
+			break;
+		}
+		if (i == offset) {
+			std::cout << red_on;
+		}
+		if (i == offset + needle_len) {
+			std::cout << red_off;
+		}
+		if (isprint(buf[i])) {
+			std::cout << setw(0) << (char)buf[i];
+		} else {
+			std::cout << setw(0) << '.';
+		}
+	}
+
+	std::cout << " |" << std::endl;
+}
+
 int main(int argc, char** argv)
 {
 	const uint32_t context_before = 16;
 	const uint32_t context_after = 16;
-	const char red_on[] = "\x1B[31m";
-	const char red_off[] = "\033[0m";
 	/*
 	 * TODO:
 	 *  - Find and replace
@@ -150,7 +204,7 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
-	// Search each input file
+	// Go through each input file
 	for (const string& savefile : opts.input_files) {
 		if (opts.input_files.size() > 1) {
 			std::cout << savefile << ':' << std::endl;
@@ -179,51 +233,7 @@ int main(int argc, char** argv)
 
 		// Print each output with context
 		for (uint32_t offset : offsets) {
-			uint32_t len = context_before + context_after + needle_len;
-			uint32_t start = offset;
-			if (start > context_before) {
-				start -= context_before;
-			} else {
-				start = 0;
-			}
-
-			// A line should look like:
-			// <offset>:  <context-before><match><context-after>    | ASCII........  |
-			std::cout << hex << setw(8) << setfill(' ') << start << ":  ";
-			for (uint32_t i = start; i < start + len; ++i) {
-				if (i > buf.length()) {
-					break;
-				}
-				if (i == offset) {
-					std::cout << red_on;
-				}
-				if (i == offset + needle_len) {
-					std::cout << red_off;
-				}
-				std::cout << hex << setw(2) << setfill('0') << (int)buf[i] << ' ';
-			}
-
-			std::cout << "   | ";
-
-			// Now do it again to print the ASCII representation...
-			for (uint32_t i = start; i < start + len; ++i) {
-				if (i > buf.length()) {
-					break;
-				}
-				if (i == offset) {
-					std::cout << red_on;
-				}
-				if (i == offset + needle_len) {
-					std::cout << red_off;
-				}
-				if (isprint(buf[i])) {
-					std::cout << setw(0) << (char)buf[i];
-				} else {
-					std::cout << setw(0) << '.';
-				}
-			}
-
-			std::cout << " |" << std::endl;
+			print_match(buf, offset, needle_len, context_before, context_after);
 		}
 	}
 
