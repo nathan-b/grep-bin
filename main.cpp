@@ -27,7 +27,7 @@ using std::string;
 using std::unordered_map;
 using std::vector;
 
-struct options
+struct options 
 {
 	string search_string;
 	vector<uint8_t> search_bytes;
@@ -107,11 +107,10 @@ bool get_opts(int argc, char** argv, options& opts)
 				}
 				opts.search_bytes[idx] = byte;
 				got_needle = true;
-			}
-				break;
-            default:
-                std::cerr << "Unrecognized option " << argv[i] << '\n';
-                return false;
+			} break;
+			default:
+				std::cerr << "Unrecognized option " << argv[i] << '\n';
+				return false;
 			}
 		} else {
 			if (!got_needle) {
@@ -131,11 +130,11 @@ bool get_opts(int argc, char** argv, options& opts)
 	return got_needle && got_haystack;
 }
 
-void print_match(const buffer& buf, 
-                 uint32_t offset, 
-				 uint32_t needle_len,
-				 uint32_t context_before, 
-				 uint32_t context_after)
+void print_match(const buffer& buf,
+	uint32_t offset,
+	uint32_t needle_len,
+	uint32_t context_before,
+	uint32_t context_after)
 {
 	const char red_on[] = "\x1B[31m";
 	const char red_off[] = "\033[0m";
