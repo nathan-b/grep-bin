@@ -13,6 +13,9 @@
 class buffer
 {
 public:
+	/**
+	 * A fairly simple forward iterator for the buffer.
+	 */
 	struct iterator
 	{
 		using iterator_category = std::forward_iterator_tag;
@@ -52,11 +55,23 @@ public:
 	virtual uint8_t& operator[](uint32_t idx) = 0;
 	virtual const uint8_t& operator[](uint32_t idx) const = 0;
 
+	/**
+	 * Compares this buffer to another.
+	 *
+	 * @return true if the buffers are identical; false otherwise.
+	 */
 	virtual bool cmp(const buffer& other)
 	{
+		if (length() != other.length()) return false;
 		return cmp(other, 0);
 	}
 
+	/**
+	 * Compares a fraction of this buffer to another.
+	 *
+	 * Returns true if the slice starting at @start and going @other.length bytes
+	 * is equal to other. False otherwise.
+	 */
 	virtual bool cmp(const buffer& other, uint32_t start)
 	{
 		if (other.length() > (length() - start)) {
@@ -65,6 +80,11 @@ public:
 		return memcmp(&other[0], &(*this)[start], other.length()) == 0;
 	}
 
+	/**
+	 * Find all instances of @needle in this buffer.
+	 *
+	 * Returns a list of buffer offsets where the needle is found.
+	 */
 	virtual std::list<uint32_t> find_all(const buffer& needle)
 	{
 		std::list<uint32_t> ret;
@@ -105,8 +125,12 @@ public:
 		m_free(false)
 	{
 		if (!arr) {
-			m_buf = new uint8_t[length];
-			m_free = true;
+			if (length > 0) {
+				m_buf = new uint8_t[length];
+				m_free = true;
+			} else {
+				m_buf = nullptr;
+			}
 		}
 	}
 
@@ -120,6 +144,9 @@ public:
 	arraybuf(const arraybuf& other) = delete;
 	arraybuf& operator=(const arraybuf& rhs) = delete;
 
+	/**
+	 * Set the size of the backing array.
+	 */
 	void reserve(uint32_t length)
 	{
 		if (m_free && m_buf) {

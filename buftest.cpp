@@ -7,19 +7,19 @@
 
 #define ASSERT_EQ(_invariant, _var)                                                                \
 	if (!((_invariant) == (_var))) {                                                               \
-		std::cerr << "Test failed: " << (int)_var << " found but " << _invariant << " expected\n"; \
+		std::cerr << "Test " << __FUNCTION__ << " failed at line " << __LINE__ << ": " << (int)_var << " found but " << _invariant << " expected\n"; \
 		return false;                                                                              \
 	}
 
 #define ASSERT_TRUE(_cond)                                 \
 	if (!(_cond)) {                                        \
-		std::cerr << "Test failed: " #_cond " is false\n"; \
+		std::cerr << "Test " << __FUNCTION__ << " failed at line " << __LINE__ << ": " #_cond " is false\n"; \
 		return false;                                      \
 	}
 
 #define ASSERT_FALSE(_cond)                               \
 	if (_cond) {                                          \
-		std::cerr << "Test failed: " #_cond " is true\n"; \
+		std::cerr << "Test " << __FUNCTION__ << " failed at line " << __LINE__ << ": " #_cond " is true\n"; \
 		return false;                                     \
 	}
 
@@ -83,7 +83,7 @@ bool cmp_test()
 
 	{
 		arraybuf needle(needle_start, 4);
-		ASSERT_TRUE(ab.cmp(needle));
+		ASSERT_FALSE(ab.cmp(needle)); // Length mismatch
 		ASSERT_TRUE(ab.cmp(needle, 0));
 		ASSERT_FALSE(ab.cmp(needle, 1));
 	}

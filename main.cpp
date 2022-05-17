@@ -27,7 +27,7 @@ using std::string;
 using std::unordered_map;
 using std::vector;
 
-struct options 
+struct options
 {
 	string search_string;
 	vector<uint8_t> search_bytes;
@@ -195,6 +195,7 @@ int main(int argc, char** argv)
 	 *  - Find and replace
 	 *  - Accept input from pipe
 	 *  - Variable context length
+	 *  - More flexible search terms / options
 	 */
 	options opts;
 
