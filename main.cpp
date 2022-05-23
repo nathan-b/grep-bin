@@ -18,7 +18,6 @@
 
 using std::dec;
 using std::hex;
-using std::ifstream;
 using std::list;
 using std::ofstream;
 using std::setfill;
@@ -33,31 +32,6 @@ struct options
 	vector<uint8_t> search_bytes;
 	list<string> input_files;
 };
-
-bool read_file_to_buffer(const string& filename, arraybuf& buf)
-{
-	uint32_t length;
-	ifstream infile(filename, std::ios::in | std::ios::binary);
-
-	if (!infile) {
-		return false;
-	}
-
-	// Get the file length
-	infile.seekg(0, std::ios::end);
-	length = infile.tellg();
-
-	// Allocate the buffer
-	buf.reserve(length);
-
-	// Read the file
-	infile.seekg(0, std::ios::beg);
-	infile.read((char*)&buf[0], length);
-
-	infile.close();
-
-	return true;
-}
 
 void save_file(const string& filename, const buffer& buf)
 {
@@ -210,8 +184,8 @@ int main(int argc, char** argv)
 			std::cout << savefile << ':' << std::endl;
 		}
 		// Read the file
-		arraybuf buf;
-		if (!read_file_to_buffer(savefile, buf)) {
+		arraybuf buf(savefile);
+		if (buf.length() == 0) {
 			std::cerr << "Could not read file " << savefile << std::endl;
 			return -2;
 		}

@@ -3,8 +3,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <list>
+#include <filesystem>
+#include <fstream>
 #include <iterator>
+#include <list>
 #include <string>
 
 /**
@@ -114,11 +116,30 @@ public:
 class arraybuf : public buffer
 {
 public:
+	/**
+	 * Create an empty arraybuf.
+	 *
+	 * Use the reserve API to set a size for the buffer.
+	 */
 	arraybuf() :
 		m_buf(nullptr),
 		m_len(0),
 		m_free(false)
 	{}
+
+	/**
+	 * Create an arraybuf from an existing buffer.
+	 *
+	 * If the input buffer is non-null, the arraybuf will wrap it but will not
+	 * take ownerwhip -- freeing the buffer is the responsibility of the caller.
+	 *
+	 * If the input buffer is null and length is nonzero, the constructor will
+	 * create a buffer of the given length. The arraybuf will own this buffer and
+	 * will free it internally when done with it.
+	 *
+	 * If the input buffer is null and length is zero, this constructor is
+	 * equivalent to the empty constructor.
+	 */
 	arraybuf(uint8_t* arr, uint32_t length) :
 		m_buf(arr),
 		m_len(length),
@@ -132,6 +153,34 @@ public:
 				m_buf = nullptr;
 			}
 		}
+	}
+
+	/**
+	 * Create a buffer from the contents of a file
+	 */
+	arraybuf(const std::filesystem::path& file_path) :
+		m_buf(nullptr),
+		m_len(0),
+		m_free(false)
+	{
+		std::ifstream infile(file_path, std::ios::in | std::ios::binary);
+
+		if (!infile) {
+			return;
+		}
+
+		// Get the file length
+		infile.seekg(0, std::ios::end);
+		m_len = infile.tellg();
+
+		// Allocate the buffer
+		m_buf = new uint8_t[m_len];
+		m_free = true;
+
+		// Read the file
+		infile.seekg(0, std::ios::beg);
+		infile.read((char*)m_buf, m_len);
+		infile.close();
 	}
 
 	~arraybuf()
