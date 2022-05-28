@@ -1,5 +1,6 @@
 #pragma once
 
+#include <climits>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -80,6 +81,28 @@ public:
 			return false;
 		}
 		return memcmp(&other[0], &(*this)[start], other.length()) == 0;
+	}
+
+	/**
+	 * Finds the first occurence of @needle in this buffer.
+	 *
+	 * Returns the offset, or UINT32_MAX if not found.
+	 */
+	virtual uint32_t find_first(const buffer& needle)
+	{
+		const uint32_t len = length();
+		const uint32_t needle_len = needle.length();
+
+		if (needle_len > len) {
+			return UINT32_MAX;
+		}
+
+		for (uint32_t i = 0; i < len - needle_len; ++i) {
+			if (cmp(needle, i)) {
+				return i;
+			}
+		}
+		return UINT32_MAX;
 	}
 
 	/**
