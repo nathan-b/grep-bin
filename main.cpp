@@ -49,7 +49,9 @@ void save_file(const string& filename, const buffer& buf)
 void usage()
 {
 	std::cerr << "Usage: gb <string> <filename> [<filename> ...] \n"
-			  << "   or: gb <byte#> <byte> [-b ...] <filename> [<filename> ...]\n";
+			  << "   or: gb -b <byte#> <byte> [-b ...] <filename> [<filename> ...]\n"
+			  << "   or: gb -be <big-endian value> <filename> [<filename> ...]\n"
+			  << "   or: gb -le <little-endian value> <filename> [<filename> ...]\n";
 }
 
 bool get_opts(int argc, char** argv, options& opts)
@@ -60,28 +62,70 @@ bool get_opts(int argc, char** argv, options& opts)
 		if (argv[i][0] == '-') {
 			// Read the option
 			switch (argv[i][1]) {
-			case 'b': {
-				if (++i == argc) {
+			case 'b':
+				if (argv[i][2] == '\0') { // -b
+					if (++i == argc) {
+						return false;
+					}
+					std::stringstream ss(argv[i]);
+					uint32_t idx;
+					ss >> dec >> idx;
+					if (++i == argc) {
+						return false;
+					}
+					ss.str(argv[i]);
+					ss.clear();
+					uint32_t byte;
+					ss >> hex >> byte;
+					if (opts.search_bytes.size() < (idx + 1)) {
+						opts.search_bytes.resize(idx + 1);
+					}
+					opts.search_bytes[idx] = byte;
+				} else if (argv[i][2] == 'e' && argv[i][3] == '\0') { // -be
+					if (++i == argc || opts.search_bytes.size() > 0) {
+						std::cerr << "Must only specify one option for search bytes\n";
+						return false;
+					}
+					uint64_t val;
+					std::cout << argv[i] << std::endl;
+					std::stringstream ss(argv[i]);
+					std::list<uint8_t> tmp_list;
+					ss >> std::setbase(0) >> val;
+					std::cout << val << std::endl;
+					while (val > 0) {
+						tmp_list.push_front(val & 0xff);
+						val >>= 8;
+					}
+					if (tmp_list.empty()) {
+						return false;
+					}
+					for (uint8_t b : tmp_list) {
+						opts.search_bytes.push_back(b);
+					}
+				} else {
+					std::cerr << "Unrecognized option " << argv[i] << '\n';
 					return false;
 				}
-				std::stringstream ss(argv[i]);
-				ss << dec;
-				uint32_t idx;
-				ss >> idx;
-				if (++i == argc) {
-					return false;
-				}
-				ss.str(argv[i]);
-				ss.clear();
-				uint32_t byte;
-				ss << hex;
-				ss >> byte;
-				if (opts.search_bytes.size() < (idx + 1)) {
-					opts.search_bytes.resize(idx + 1);
-				}
-				opts.search_bytes[idx] = byte;
 				got_needle = true;
-			} break;
+			break;
+			case 'l':
+				if (argv[i][2] == 'e' && argv[i][3] == '\0') {
+					if (++i == argc || opts.search_bytes.size() > 0) {
+						return false;
+					}
+					uint64_t val;
+					std::stringstream ss(argv[i]);
+					ss >> std::setbase(0) >> val;
+					while (val > 0) {
+						opts.search_bytes.push_back(val & 0xff);
+						val >>= 8;
+					}
+				} else {
+					std::cerr << "Unrecognized option " << argv[i] << '\n';
+					return false;
+				}
+				got_needle = true;
+			break;
 			default:
 				std::cerr << "Unrecognized option " << argv[i] << '\n';
 				return false;
