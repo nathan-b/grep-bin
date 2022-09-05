@@ -9,6 +9,7 @@
 #include <iterator>
 #include <list>
 #include <string>
+#include <initializer_list>
 
 /**
  * Class defining a buffer interface.
@@ -63,7 +64,7 @@ public:
 	 *
 	 * @return true if the buffers are identical; false otherwise.
 	 */
-	virtual bool cmp(const buffer& other)
+	virtual bool cmp(const buffer& other) const
 	{
 		if (length() != other.length()) return false;
 		return cmp(other, 0);
@@ -75,7 +76,7 @@ public:
 	 * Returns true if the slice starting at @start and going @other.length bytes
 	 * is equal to other. False otherwise.
 	 */
-	virtual bool cmp(const buffer& other, uint32_t start)
+	virtual bool cmp(const buffer& other, uint32_t start) const
 	{
 		if (other.length() > (length() - start)) {
 			return false;
@@ -88,7 +89,7 @@ public:
 	 *
 	 * Returns the offset, or UINT32_MAX if not found.
 	 */
-	virtual uint32_t find_first(const buffer& needle)
+	virtual uint32_t find_first(const buffer& needle) const
 	{
 		const uint32_t len = length();
 		const uint32_t needle_len = needle.length();
@@ -110,7 +111,8 @@ public:
 	 *
 	 * Returns a list of buffer offsets where the needle is found.
 	 */
-	virtual std::list<uint32_t> find_all(const buffer& needle)
+	virtual std::list<uint32_t> find_all(const buffer& needle,
+	                                     uint32_t start_at = 0) const
 	{
 		std::list<uint32_t> ret;
 		const uint32_t len = length();
@@ -120,7 +122,7 @@ public:
 			return ret;
 		}
 
-		for (uint32_t i = 0; i < len - needle_len; ++i) {
+		for (uint32_t i = start_at; i < len - needle_len; ++i) {
 			if (cmp(needle, i)) {
 				ret.push_back(i);
 				i += (needle_len - 1);
@@ -175,6 +177,23 @@ public:
 			} else {
 				m_buf = nullptr;
 			}
+		}
+	}
+
+	/**
+	 * Create an arraybuf given an initializer list.
+	 *
+	 * Allows the programmatic construction of arraybuf "literals".
+	 */
+	arraybuf(std::initializer_list<uint8_t>&& in_list)
+	{
+		m_len = in_list.size();
+		m_buf = new uint8_t(m_len);
+		m_free = true;
+		uint8_t* pos = m_buf;
+
+		for (uint8_t val : in_list) {
+			*pos++ = val;
 		}
 	}
 
@@ -257,11 +276,13 @@ private:
 
 /**
  * Buffer backed by a std::string.
+ *
+ * Makes a copy of the provided string.
  */
 class strbuf : public buffer
 {
 public:
-	strbuf(std::string& str) :
+	strbuf(const std::string& str) :
 		m_buf(str)
 	{}
 

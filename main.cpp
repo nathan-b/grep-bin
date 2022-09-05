@@ -31,6 +31,8 @@ struct options
 	string search_string;
 	vector<uint8_t> search_bytes;
 	list<string> input_files;
+	uint8_t context_before;
+	uint8_t context_after;
 };
 
 void save_file(const string& filename, const buffer& buf)
@@ -62,6 +64,9 @@ bool get_opts(int argc, char** argv, options& opts)
 		if (argv[i][0] == '-') {
 			// Read the option
 			switch (argv[i][1]) {
+			//
+			// Get the needle
+			//
 			case 'b':
 				if (argv[i][2] == '\0') { // -b
 					if (++i == argc) {
@@ -87,11 +92,9 @@ bool get_opts(int argc, char** argv, options& opts)
 						return false;
 					}
 					uint64_t val;
-					std::cout << argv[i] << std::endl;
 					std::stringstream ss(argv[i]);
 					std::list<uint8_t> tmp_list;
 					ss >> std::setbase(0) >> val;
-					std::cout << val << std::endl;
 					while (val > 0) {
 						tmp_list.push_front(val & 0xff);
 						val >>= 8;
@@ -125,6 +128,27 @@ bool get_opts(int argc, char** argv, options& opts)
 					return false;
 				}
 				got_needle = true;
+			break;
+			//
+			// Display options
+			//
+			case 'A':
+			case 'B':
+				if (argv[i][2] == '\0') { // -B, -A
+					char c = argv[i][1];
+					if (++i == argc) {
+						return false;
+					}
+					std::stringstream ss(argv[i]);
+					uint32_t ctx;
+					ss >> dec >> ctx;
+
+					if (c == 'B') {
+						opts.context_before = ctx;
+					} else if (c == 'A') {
+						opts.context_after = ctx;
+					}
+				}
 			break;
 			default:
 				std::cerr << "Unrecognized option " << argv[i] << '\n';
@@ -212,8 +236,8 @@ int main(int argc, char** argv)
 	 * TODO:
 	 *  - Find and replace
 	 *  - Accept input from pipe
-	 *  - Variable context length
 	 *  - More flexible search terms / options
+	 *  - Get terminal / screen width
 	 */
 	options opts;
 
@@ -251,7 +275,7 @@ int main(int argc, char** argv)
 
 		// Print each output with context
 		for (uint32_t offset : offsets) {
-			print_match(buf, offset, needle_len, context_before, context_after);
+			print_match(buf, offset, needle_len, opts.context_before, opts.context_after);
 		}
 	}
 
