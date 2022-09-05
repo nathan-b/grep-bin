@@ -230,8 +230,6 @@ void print_match(const buffer& buf,
 
 int main(int argc, char** argv)
 {
-	const uint32_t context_before = 16;
-	const uint32_t context_after = 16;
 	/*
 	 * TODO:
 	 *  - Find and replace
