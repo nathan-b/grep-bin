@@ -4,7 +4,9 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <gtest/gtest.h>
 
+/*
 #define ASSERT_EQ(_invariant, _var)                                                                \
 	if (!((_invariant) == (_var))) {                                                               \
 		std::cerr << "Test " << __FUNCTION__ << " failed at line " << __LINE__ << ": " << (int)_var << " found but " << _invariant << " expected\n"; \
@@ -22,7 +24,7 @@
 		std::cerr << "Test " << __FUNCTION__ << " failed at line " << __LINE__ << ": " #_cond " is true\n"; \
 		return false;                                     \
 	}
-
+*/
 const char* seed_chars = "abcdefghijklmnopqrstuvwxyz";
 const uint32_t seed_len = 26;
 const uint32_t tb_size = 256;
@@ -37,7 +39,7 @@ void setup()
 	}
 }
 
-bool arraybuf_test()
+TEST(buffer, arraybuf_test)
 {
 	arraybuf ab(test_buf, tb_size);
 
@@ -48,10 +50,9 @@ bool arraybuf_test()
 		ASSERT_EQ(iter, ab[iter]);
 		++iter;
 	}
-	return true;
 }
 
-bool strbuf_test()
+TEST(buffer, strbuf_test)
 {
 	strbuf sb(test_str);
 
@@ -63,10 +64,9 @@ bool strbuf_test()
 		ASSERT_EQ(seed_chars[iter % seed_len], sb[iter]);
 		++iter;
 	}
-	return true;
 }
 
-bool cmp_test()
+TEST(buffer, cmp_test)
 {
 	uint8_t needle_data[4] = { 5, 6, 7, 8 };
 	uint8_t needle_start[4] = { 0, 1, 2, 3 };
@@ -93,11 +93,9 @@ bool cmp_test()
 		ASSERT_FALSE(ab.cmp(needle));
 		ASSERT_TRUE(ab.cmp(needle, 252));
 	}
-
-	return true;
 }
 
-bool find_test()
+TEST(buffer, find_test)
 {
 	uint8_t corpus[] = { 0x6f, 0x00, 0x1e, 0xef, 0x2b, 0x94, 0x00, 0x00,
 	                     0x00, 0x04, 0x6c, 0x69, 0x73, 0x74, 0x00, 0x00,
@@ -111,53 +109,36 @@ bool find_test()
 		std::string item("list");
 		strbuf needle(item);
 		auto res = ab.find_all(needle);
-		ASSERT_EQ(1, res.size());
-		ASSERT_EQ(10, res.front());
+		ASSERT_EQ((uint64_t)1, res.size());
+		ASSERT_EQ((uint32_t)10, res.front());
 	}
 
 	{
 		std::string item("dorf");
 		strbuf needle(item);
 		auto res = ab.find_all(needle);
-		ASSERT_EQ(0, res.size());
+		ASSERT_EQ((uint32_t)0, res.size());
 	}
 
 	{
 		uint8_t ndata[] = { 0x00, 0x00 };
 		arraybuf needle(ndata, 2);
 		auto res = ab.find_all(needle);
-		ASSERT_EQ(4, res.size());
-		ASSERT_EQ(6, res.front());
+		ASSERT_EQ((uint32_t)4, res.size());
+		ASSERT_EQ((uint32_t)6, res.front());
 		res.pop_front();
-		ASSERT_EQ(14, res.front());
+		ASSERT_EQ((uint32_t)14, res.front());
 		res.pop_front();
-		ASSERT_EQ(19, res.front());
+		ASSERT_EQ((uint32_t)19, res.front());
 		res.pop_front();
-		ASSERT_EQ(21, res.front());
+		ASSERT_EQ((uint32_t)21, res.front());
 	}
-
-	return true;
 }
 
 int main(int argc, char** argv)
 {
 	setup();
-	if (!arraybuf_test()) {
-		return -1;
-	}
+	::testing::InitGoogleTest(&argc, argv);
 
-	if (!strbuf_test()) {
-		return -1;
-	}
-
-	if (!cmp_test()) {
-		return -1;
-	}
-
-	if (!find_test()) {
-		return -1;
-	}
-
-	std::cout << "All passed!\n";
-	return 0;
+    return RUN_ALL_TESTS();
 }

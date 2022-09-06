@@ -1,14 +1,23 @@
 DBFLAGS=-g -O0 -DDEBUG
 NDBFLAGS=-O2
 CPPFLAGS=-Wall -Werror
-OUTPUT=gb
+OUTDIR=build
+OUTPUT=$(OUTDIR)/gb
 
+GTEST=$(OUTDIR)/gtest
+
+INCLUDES+=-I $(GTEST)/googletest/include
 CPPFILES=main.cpp
 TESTFILES=buftest.cpp
 LIBS=
 TESTLIBS=$(OUTDIR)/lib/libgtest.a
 
-debug: $(CPPFILES)
+all: debug
+
+$(OUTDIR):
+	mkdir -p $(OUTDIR)
+
+debug: $(CPPFILES) $(OUTDIR)
 	g++ $(CPPFLAGS) $(DBFLAGS) $(INCLUDES) -o $(OUTPUT) $(CPPFILES) $(LIBS)
 
 release: $(CPPFILES) $(OUTDIR)
@@ -23,4 +32,4 @@ gtest_git:
 	make -C $(OUTDIR)
 
 clean:
-	-rm $(OUTPUT)
+	-rm -rf $(OUTPUT) $(OUTDIR)
