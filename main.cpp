@@ -59,6 +59,9 @@ void usage()
 bool get_opts(int argc, char** argv, options& opts)
 {
 	bool got_needle = false, got_haystack = false;
+	// Set defaults
+	opts.context_before = 16;
+	opts.context_after = 16;
 
 	for (int i = 1; i < argc; ++i) {
 		if (argv[i][0] == '-') {
