@@ -53,7 +53,8 @@ void usage()
 	std::cerr << "Usage: gb <string> <filename> [<filename> ...] \n"
 			  << "   or: gb -b <byte#> <byte> [-b ...] <filename> [<filename> ...]\n"
 			  << "   or: gb -be <big-endian value> <filename> [<filename> ...]\n"
-			  << "   or: gb -le <little-endian value> <filename> [<filename> ...]\n";
+			  << "   or: gb -le <little-endian value> <filename> [<filename> ...]\n"
+			  << "   or: gb -s <string> <filename> [<filename> ...]\n";
 }
 
 bool get_opts(int argc, char** argv, options& opts)
@@ -125,6 +126,21 @@ bool get_opts(int argc, char** argv, options& opts)
 					while (val > 0) {
 						opts.search_bytes.push_back(val & 0xff);
 						val >>= 8;
+					}
+				} else {
+					std::cerr << "Unrecognized option " << argv[i] << '\n';
+					return false;
+				}
+				got_needle = true;
+			break;
+			case 's':
+				if (argv[i][2] == '\0') {
+					if (++i == argc || opts.search_bytes.size() > 0) {
+						return false;
+					}
+					const char* str = argv[i];
+					while (*str) {
+						opts.search_bytes.push_back((uint8_t)*(str++));
 					}
 				} else {
 					std::cerr << "Unrecognized option " << argv[i] << '\n';
@@ -239,6 +255,7 @@ int main(int argc, char** argv)
 	 *  - Accept input from pipe
 	 *  - More flexible search terms / options
 	 *  - Get terminal / screen width
+	 *  - Leading zeroes in search string
 	 */
 	options opts;
 
