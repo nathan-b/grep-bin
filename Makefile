@@ -22,7 +22,5 @@ gtest_git:
 	cmake -B $(OUTDIR) $(GTEST)
 	make -C $(OUTDIR)
 
-test: $(TESTFILES)
-	g++ $(CPPFLAGS) $(DBFLAGS) -o tests $(TESTFILES) $(LIBS)
 clean:
 	-rm $(OUTPUT)
