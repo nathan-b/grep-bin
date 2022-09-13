@@ -4,27 +4,92 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <list>
 #include <gtest/gtest.h>
 
-/*
-#define ASSERT_EQ(_invariant, _var)                                                                \
-	if (!((_invariant) == (_var))) {                                                               \
-		std::cerr << "Test " << __FUNCTION__ << " failed at line " << __LINE__ << ": " << (int)_var << " found but " << _invariant << " expected\n"; \
-		return false;                                                                              \
+uint8_t char2num(char c)
+{
+	switch (c) {
+	case '0':
+		return 0;
+	case '1':
+		return 1;
+	case '2':
+		return 2;
+	case '3':
+		return 3;
+	case '4':
+		return 4;
+	case '5':
+		return 5;
+	case '6':
+		return 6;
+	case '7':
+		return 7;
+	case '8':
+		return 8;
+	case '9':
+		return 9;
+	case 'a':
+		return 0xa;
+	case 'b':
+		return 0xb;
+	case 'c':
+		return 0xc;
+	case 'd':
+		return 0xd;
+	case 'e':
+		return 0xe;
+	case 'f':
+		return 0xf;
+	}
+	return 0xff;
+}
+
+buffer* num2buf(const std::string& numstr, bool big_endian, bool hex)
+{
+	if (!big_endian) {
+		// Only be for now
+		return nullptr;
 	}
 
-#define ASSERT_TRUE(_cond)                                 \
-	if (!(_cond)) {                                        \
-		std::cerr << "Test " << __FUNCTION__ << " failed at line " << __LINE__ << ": " #_cond " is false\n"; \
-		return false;                                      \
+	if (!hex) {
+		// Only hex for now
+		return nullptr;
 	}
 
-#define ASSERT_FALSE(_cond)                               \
-	if (_cond) {                                          \
-		std::cerr << "Test " << __FUNCTION__ << " failed at line " << __LINE__ << ": " #_cond " is true\n"; \
-		return false;                                     \
+	enum {
+		LOW,
+		HIGH
+	} pos = LOW;
+
+	std::list<uint8_t> num_list;
+	uint8_t val;
+
+	for (auto it = numstr.rbegin(); it != numstr.rend(); ++it) {
+		if (pos == LOW) {
+			val = char2num(*it);
+			pos = HIGH;
+		} else {
+			val += char2num(*it) * 0x10;
+			num_list.push_front(val);
+			pos = LOW;
+		}
 	}
-*/
+	if (pos == HIGH) {
+		num_list.push_front(val);
+	}
+
+	// We now have a list of bytes in big-endian order
+	arraybuf* ret = new arraybuf(nullptr, num_list.size());
+	uint32_t idx = 0;
+	for (uint8_t i : num_list) {
+		(*ret)[idx++] = i;
+	}
+
+	return ret;
+}
+
 const char* seed_chars = "abcdefghijklmnopqrstuvwxyz";
 const uint32_t seed_len = 26;
 const uint32_t tb_size = 256;
@@ -133,6 +198,37 @@ TEST(buffer, find_test)
 		res.pop_front();
 		ASSERT_EQ((uint32_t)21, res.front());
 	}
+}
+
+TEST(buffer, num2buf_tests)
+{
+	buffer* buf = nullptr;
+
+	buf = num2buf("a", true, true);
+	ASSERT_NE(nullptr, buf);
+	ASSERT_EQ((uint32_t)1, buf->length());
+	ASSERT_EQ((uint8_t)0xa, (*buf)[0]);
+	delete buf;
+
+	buf = num2buf("a4", true, true);
+	ASSERT_NE(nullptr, buf);
+	ASSERT_EQ((uint32_t)1, buf->length());
+	ASSERT_EQ((uint8_t)0xa4, (*buf)[0]);
+	delete buf;
+
+	buf = num2buf("a4f", true, true);
+	ASSERT_NE(nullptr, buf);
+	ASSERT_EQ((uint32_t)2, buf->length());
+	ASSERT_EQ((uint8_t)0x4f, (*buf)[0]);
+	ASSERT_EQ((uint8_t)0xa, (*buf)[1]);
+	delete buf;
+
+	buf = num2buf("a4f0", true, true);
+	ASSERT_NE(nullptr, buf);
+	ASSERT_EQ((uint32_t)2, buf->length());
+	ASSERT_EQ((uint8_t)0xf0, (*buf)[0]);
+	ASSERT_EQ((uint8_t)0xa4, (*buf)[1]);
+	delete buf;
 }
 
 int main(int argc, char** argv)
