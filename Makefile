@@ -1,8 +1,9 @@
 DBFLAGS=-g -O0 -DDEBUG
 NDBFLAGS=-O2
-CPPFLAGS=-Wall -Werror
+CPPFLAGS=-Wall -Werror --std=c++20
 OUTDIR=build
 OUTPUT=$(OUTDIR)/gb
+
 
 GTEST=$(OUTDIR)/gtest
 
@@ -23,10 +24,10 @@ debug: $(CPPFILES) $(OUTDIR)
 release: $(CPPFILES) $(OUTDIR)
 	g++ $(CPPFLAGS) $(NDBFLAGS) $(INCLUDES) -o $(OUTPUT) $(CPPFILES) $(LIBS)
 
-test: $(TESTFILES) $(OUTDIR) gtest_git
+test: $(CPPFILES) $(TESTFILES) $(OUTDIR) $(GTEST)
 	g++ $(CPPFLAGS) $(DBFLAGS) $(INCLUDES) -o $(OUTDIR)/tests $(TESTFILES) $(LIBS) $(TESTLIBS)
 
-gtest_git:
+$(GTEST):
 	git clone --depth=1 -b main https://github.com/google/googletest.git $(GTEST)
 	cmake -B $(OUTDIR) $(GTEST)
 	make -C $(OUTDIR)

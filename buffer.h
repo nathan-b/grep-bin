@@ -6,10 +6,11 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <initializer_list>
 #include <iterator>
 #include <list>
+#include <memory>
 #include <string>
-#include <initializer_list>
 #include <vector>
 
 /**
@@ -351,10 +352,11 @@ class buffer_conversion
 		return 0xff;
 	}
 public:
-	static buffer* number_string_to_buffer(const std::string& numstr,
-	                                       bool big_endian,
-	                                       bool hex)
+	static std::unique_ptr<buffer> number_string_to_buffer(const std::string& str,
+	                                                       bool big_endian,
+	                                                       bool hex)
 	{
+		std::string numstr = str;
 		if (!hex) {
 			// Only hex for now
 			return nullptr;
@@ -367,6 +369,11 @@ public:
 
 		std::list<uint8_t> num_list;
 		uint8_t val;
+
+		// Read the 0x prefix, if present
+		if (numstr.starts_with("0x") || numstr.starts_with("0X")) {
+			numstr = numstr.substr(2);
+		}
 
 		pos = LOW;
 		for (auto it = numstr.rbegin(); it != numstr.rend(); ++it) {
@@ -394,8 +401,12 @@ public:
 			}
 		}
 
+		if (num_list.empty()) {
+			return nullptr;
+		}
+
 		// We now have a list of bytes in the correct endianness
-		arraybuf* ret = new arraybuf(nullptr, num_list.size());
+		auto ret = std::make_unique<arraybuf>(nullptr, num_list.size());
 		uint32_t idx = 0;
 		for (uint8_t i : num_list) {
 			(*ret)[idx++] = i;

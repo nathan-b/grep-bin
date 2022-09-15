@@ -82,47 +82,43 @@ bool get_opts(int argc, char** argv, options& opts)
 						needle_bytes.resize(idx + 1);
 					}
 					needle_bytes[idx] = byte;
+					got_needle = true;
 				} else if (argv[i][2] == 'e' && argv[i][3] == '\0') { // -be
-					if (++i == argc || needle_bytes.size() > 0) {
+					if (++i == argc) {
+						std::cerr << "-be requires an argument\n";
 						return false;
 					}
-					uint64_t val;
-					std::stringstream ss(argv[i]);
-					std::list<uint8_t> tmp_list;
-					ss >> std::setbase(0) >> val;
-					while (val > 0) {
-						tmp_list.push_front(val & 0xff);
-						val >>= 8;
-					}
-					if (tmp_list.empty()) {
+					if (got_needle) {
+						std::cerr << "Only one search pattern can be specified\n";
 						return false;
 					}
-					for (uint8_t b : tmp_list) {
-						needle_bytes.push_back(b);
+					opts.search_bytes = buffer_conversion::number_string_to_buffer(argv[i], true, true);
+					if (opts.search_bytes) {
+						got_needle = true;
 					}
 				} else {
 					std::cerr << "Unrecognized option " << argv[i] << '\n';
 					return false;
 				}
-				got_needle = true;
 			break;
 			case 'l':
 				if (argv[i][2] == 'e' && argv[i][3] == '\0') {
-					if (++i == argc || needle_bytes.size() > 0) {
+					if (++i == argc) {
+						std::cerr << "-be requires an argument\n";
 						return false;
 					}
-					uint64_t val;
-					std::stringstream ss(argv[i]);
-					ss >> std::setbase(0) >> val;
-					while (val > 0) {
-						needle_bytes.push_back(val & 0xff);
-						val >>= 8;
+					if (got_needle) {
+						std::cerr << "Only one search pattern can be specified\n";
+						return false;
+					}
+					opts.search_bytes = buffer_conversion::number_string_to_buffer(argv[i], false, true);
+					if (opts.search_bytes) {
+						got_needle = true;
 					}
 				} else {
 					std::cerr << "Unrecognized option " << argv[i] << '\n';
 					return false;
 				}
-				got_needle = true;
 			break;
 			case 's':
 				if (argv[i][2] == '\0') {
@@ -249,7 +245,6 @@ int main(int argc, char** argv)
 	 *  - Accept input from pipe
 	 *  - More flexible search terms / options
 	 *  - Get terminal / screen width
-	 *  - Leading zeroes in search string
 	 */
 	options opts;
 
