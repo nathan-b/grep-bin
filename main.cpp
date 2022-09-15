@@ -84,7 +84,6 @@ bool get_opts(int argc, char** argv, options& opts)
 					needle_bytes[idx] = byte;
 				} else if (argv[i][2] == 'e' && argv[i][3] == '\0') { // -be
 					if (++i == argc || needle_bytes.size() > 0) {
-						std::cerr << "Must only specify one option for search bytes\n";
 						return false;
 					}
 					uint64_t val;

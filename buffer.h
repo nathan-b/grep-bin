@@ -351,9 +351,9 @@ class buffer_conversion
 		return 0xff;
 	}
 public:
-	static buffer* string_to_buffer(const std::string& numstr,
-	                                bool big_endian,
-	                                bool hex)
+	static buffer* number_string_to_buffer(const std::string& numstr,
+	                                       bool big_endian,
+	                                       bool hex)
 	{
 		if (!hex) {
 			// Only hex for now

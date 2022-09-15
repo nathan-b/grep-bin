@@ -121,33 +121,33 @@ TEST(buffer, num2buf_be_tests)
 {
 	buffer* buf = nullptr;
 
-	buf = buffer_conversion::string_to_buffer("A", true, true);
+	buf = buffer_conversion::number_string_to_buffer("A", true, true);
 	ASSERT_NE(nullptr, buf);
 	ASSERT_EQ((uint32_t)1, buf->length());
 	ASSERT_EQ((uint8_t)0xa, (*buf)[0]);
 	delete buf;
 
-	buf = buffer_conversion::string_to_buffer("a4", true, true);
+	buf = buffer_conversion::number_string_to_buffer("a4", true, true);
 	ASSERT_NE(nullptr, buf);
 	ASSERT_EQ((uint32_t)1, buf->length());
 	ASSERT_EQ((uint8_t)0xa4, (*buf)[0]);
 	delete buf;
 
-	buf = buffer_conversion::string_to_buffer("a4F", true, true);
+	buf = buffer_conversion::number_string_to_buffer("a4F", true, true);
 	ASSERT_NE(nullptr, buf);
 	ASSERT_EQ((uint32_t)2, buf->length());
 	ASSERT_EQ((uint8_t)0xa, (*buf)[0]);
 	ASSERT_EQ((uint8_t)0x4f, (*buf)[1]);
 	delete buf;
 
-	buf = buffer_conversion::string_to_buffer("a4f0", true, true);
+	buf = buffer_conversion::number_string_to_buffer("a4f0", true, true);
 	ASSERT_NE(nullptr, buf);
 	ASSERT_EQ((uint32_t)2, buf->length());
 	ASSERT_EQ((uint8_t)0xa4, (*buf)[0]);
 	ASSERT_EQ((uint8_t)0xf0, (*buf)[1]);
 	delete buf;
 
-	buf = buffer_conversion::string_to_buffer("a4f05aff4d0e110a9", true, true);
+	buf = buffer_conversion::number_string_to_buffer("a4f05aff4d0e110a9", true, true);
 	ASSERT_NE(nullptr, buf);
 	ASSERT_EQ((uint32_t)9, buf->length());
 	ASSERT_EQ((uint8_t)0x0a, (*buf)[0]);
@@ -166,40 +166,40 @@ TEST(buffer, num2buf_le_tests)
 {
 	buffer* buf = nullptr;
 
-	buf = buffer_conversion::string_to_buffer("a", false, true);
+	buf = buffer_conversion::number_string_to_buffer("a", false, true);
 	ASSERT_NE(nullptr, buf);
 	ASSERT_EQ((uint32_t)1, buf->length());
 	ASSERT_EQ((uint8_t)0xa, (*buf)[0]);
 	delete buf;
 
-	buf = buffer_conversion::string_to_buffer("a4", false, true);
+	buf = buffer_conversion::number_string_to_buffer("a4", false, true);
 	ASSERT_NE(nullptr, buf);
 	ASSERT_EQ((uint32_t)1, buf->length());
 	ASSERT_EQ((uint8_t)0xa4, (*buf)[0]);
 	delete buf;
 
-	buf = buffer_conversion::string_to_buffer("a4f", false, true);
+	buf = buffer_conversion::number_string_to_buffer("a4f", false, true);
 	ASSERT_NE(nullptr, buf);
 	ASSERT_EQ((uint32_t)2, buf->length());
 	ASSERT_EQ((uint8_t)0x0a, (*buf)[1]);
 	ASSERT_EQ((uint8_t)0x4f, (*buf)[0]);
 	delete buf;
 
-	buf = buffer_conversion::string_to_buffer("4F0a", false, true);
+	buf = buffer_conversion::number_string_to_buffer("4F0a", false, true);
 	ASSERT_NE(nullptr, buf);
 	ASSERT_EQ((uint32_t)2, buf->length());
 	ASSERT_EQ((uint8_t)0x0a, (*buf)[0]);
 	ASSERT_EQ((uint8_t)0x4f, (*buf)[1]);
 	delete buf;
 
-	buf = buffer_conversion::string_to_buffer("a4f0", false, true);
+	buf = buffer_conversion::number_string_to_buffer("a4f0", false, true);
 	ASSERT_NE(nullptr, buf);
 	ASSERT_EQ((uint32_t)2, buf->length());
 	ASSERT_EQ((uint8_t)0xa4, (*buf)[1]);
 	ASSERT_EQ((uint8_t)0xf0, (*buf)[0]);
 	delete buf;
 
-	buf = buffer_conversion::string_to_buffer("a4f05aff4d0E110a9", false, true);
+	buf = buffer_conversion::number_string_to_buffer("a4f05aff4d0E110a9", false, true);
 	ASSERT_NE(nullptr, buf);
 	ASSERT_EQ((uint32_t)9, buf->length());
 	ASSERT_EQ((uint8_t)0xa9, (*buf)[0]);
