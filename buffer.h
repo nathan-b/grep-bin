@@ -10,6 +10,7 @@
 #include <list>
 #include <string>
 #include <initializer_list>
+#include <vector>
 
 /**
  * Class defining a buffer interface.
@@ -178,6 +179,20 @@ public:
 				m_buf = nullptr;
 			}
 		}
+	}
+
+	/**
+	 * Create an arraybuf from a vector of bytes.
+	 *
+	 * Copies the vector into the internal buffer.
+	 */
+	arraybuf(const std::vector<uint8_t>& vec)
+	{
+		m_len = vec.size();
+		m_free = true;
+		m_buf = new uint8_t[m_len];
+
+		memcpy(m_buf, vec.data(), m_len);
 	}
 
 	/**

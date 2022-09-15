@@ -9,6 +9,7 @@
 #include <list>
 #include <sstream>
 #include <string>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -29,7 +30,7 @@ using std::vector;
 struct options
 {
 	string search_string;
-	vector<uint8_t> search_bytes;
+	std::unique_ptr<buffer> search_bytes;
 	list<string> input_files;
 	uint8_t context_before;
 	uint8_t context_after;
@@ -63,6 +64,8 @@ bool get_opts(int argc, char** argv, options& opts)
 	// Set defaults
 	opts.context_before = 16;
 	opts.context_after = 16;
+	std::vector<uint8_t> needle_bytes;
+	std::string needle_string;
 
 	for (int i = 1; i < argc; ++i) {
 		if (argv[i][0] == '-') {
@@ -86,12 +89,12 @@ bool get_opts(int argc, char** argv, options& opts)
 					ss.clear();
 					uint32_t byte;
 					ss >> hex >> byte;
-					if (opts.search_bytes.size() < (idx + 1)) {
-						opts.search_bytes.resize(idx + 1);
+					if (needle_bytes.size() < (idx + 1)) {
+						needle_bytes.resize(idx + 1);
 					}
-					opts.search_bytes[idx] = byte;
+					needle_bytes[idx] = byte;
 				} else if (argv[i][2] == 'e' && argv[i][3] == '\0') { // -be
-					if (++i == argc || opts.search_bytes.size() > 0) {
+					if (++i == argc || needle_bytes.size() > 0) {
 						std::cerr << "Must only specify one option for search bytes\n";
 						return false;
 					}
@@ -107,7 +110,7 @@ bool get_opts(int argc, char** argv, options& opts)
 						return false;
 					}
 					for (uint8_t b : tmp_list) {
-						opts.search_bytes.push_back(b);
+						needle_bytes.push_back(b);
 					}
 				} else {
 					std::cerr << "Unrecognized option " << argv[i] << '\n';
@@ -117,14 +120,14 @@ bool get_opts(int argc, char** argv, options& opts)
 			break;
 			case 'l':
 				if (argv[i][2] == 'e' && argv[i][3] == '\0') {
-					if (++i == argc || opts.search_bytes.size() > 0) {
+					if (++i == argc || needle_bytes.size() > 0) {
 						return false;
 					}
 					uint64_t val;
 					std::stringstream ss(argv[i]);
 					ss >> std::setbase(0) >> val;
 					while (val > 0) {
-						opts.search_bytes.push_back(val & 0xff);
+						needle_bytes.push_back(val & 0xff);
 						val >>= 8;
 					}
 				} else {
@@ -135,13 +138,10 @@ bool get_opts(int argc, char** argv, options& opts)
 			break;
 			case 's':
 				if (argv[i][2] == '\0') {
-					if (++i == argc || opts.search_bytes.size() > 0) {
+					if (++i == argc || needle_bytes.size() > 0 || !needle_string.empty()) {
 						return false;
 					}
-					const char* str = argv[i];
-					while (*str) {
-						opts.search_bytes.push_back((uint8_t)*(str++));
-					}
+					needle_string = argv[i];
 				} else {
 					std::cerr << "Unrecognized option " << argv[i] << '\n';
 					return false;
@@ -176,17 +176,23 @@ bool get_opts(int argc, char** argv, options& opts)
 		} else {
 			if (!got_needle) {
 				// Assume this is the search string
-				if (!opts.search_bytes.empty()) {
+				if (!needle_bytes.empty()) {
 					std::cerr << "Error: Can't specify both a search string and search bytes\n";
 					return false;
 				}
-				opts.search_string = argv[i];
+				needle_string = argv[i];
 				got_needle = true;
 			} else {
 				got_haystack = true;
 				opts.input_files.emplace_back(argv[i]);
 			}
 		}
+	}
+
+	if (!needle_bytes.empty()) {
+		opts.search_bytes = std::make_unique<arraybuf>(needle_bytes);
+	} else if (!needle_string.empty()) {
+		opts.search_bytes = std::make_unique<strbuf>(needle_string);
 	}
 	return got_needle && got_haystack;
 }
@@ -277,19 +283,12 @@ int main(int argc, char** argv)
 		}
 
 		// Search the file
-		list<uint32_t> offsets;
-		uint32_t needle_len = 0;
-		if (!opts.search_string.empty()) {
-			offsets = buf.find_all(strbuf(opts.search_string));
-			needle_len = opts.search_string.length();
-		} else {
-			offsets = buf.find_all(arraybuf(opts.search_bytes.data(), opts.search_bytes.size()));
-			needle_len = opts.search_bytes.size();
-		}
+		uint32_t needle_len = opts.search_bytes->length();
 		if (needle_len == 0) {
 			std::cerr << "Null search string\n";
 			return -3;
 		}
+		std::list<uint32_t> offsets = buf.find_all(*opts.search_bytes);
 
 		// Print each output with context
 		for (uint32_t offset : offsets) {
