@@ -17,28 +17,18 @@
 
 #include "buffer.h"
 
-using std::dec;
-using std::hex;
-using std::list;
-using std::ofstream;
-using std::setfill;
-using std::setw;
-using std::string;
-using std::unordered_map;
-using std::vector;
-
 struct options
 {
-	string search_string;
+	std::string search_string;
 	std::unique_ptr<buffer> search_bytes;
-	list<string> input_files;
+	std::list<std::string> input_files;
 	uint8_t context_before;
 	uint8_t context_after;
 };
 
-void save_file(const string& filename, const buffer& buf)
+void save_file(const std::string& filename, const buffer& buf)
 {
-	ofstream outfile(filename, std::ios::out | std::ios::binary);
+	std::ofstream outfile(filename, std::ios::out | std::ios::binary);
 
 	if (!outfile) {
 		std::cerr << "Could not save file " << filename << "!\n";
@@ -61,7 +51,6 @@ void usage()
 bool get_opts(int argc, char** argv, options& opts)
 {
 	bool got_needle = false, got_haystack = false;
-	// Set defaults
 	opts.context_before = 16;
 	opts.context_after = 16;
 	std::vector<uint8_t> needle_bytes;
@@ -81,14 +70,14 @@ bool get_opts(int argc, char** argv, options& opts)
 					}
 					std::stringstream ss(argv[i]);
 					uint32_t idx;
-					ss >> dec >> idx;
+					ss >> std::dec >> idx;
 					if (++i == argc) {
 						return false;
 					}
 					ss.str(argv[i]);
 					ss.clear();
 					uint32_t byte;
-					ss >> hex >> byte;
+					ss >> std::hex >> byte;
 					if (needle_bytes.size() < (idx + 1)) {
 						needle_bytes.resize(idx + 1);
 					}
@@ -160,7 +149,7 @@ bool get_opts(int argc, char** argv, options& opts)
 					}
 					std::stringstream ss(argv[i]);
 					uint32_t ctx;
-					ss >> dec >> ctx;
+					ss >> std::dec >> ctx;
 
 					if (c == 'B') {
 						opts.context_before = ctx;
@@ -216,7 +205,7 @@ void print_match(const buffer& buf,
 
 	// A line should look like:
 	// <offset>:  <context-before><match><context-after>    | ASCII........  |
-	std::cout << hex << setw(8) << setfill(' ') << start << ":  ";
+	std::cout << std::hex << std::setw(8) << std::setfill(' ') << start << ":  ";
 	for (uint32_t i = start; i < start + len; ++i) {
 		if (i > buf.length()) {
 			break;
@@ -227,7 +216,7 @@ void print_match(const buffer& buf,
 		if (i == offset + needle_len) {
 			std::cout << red_off;
 		}
-		std::cout << hex << setw(2) << setfill('0') << (int)buf[i] << ' ';
+		std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)buf[i] << ' ';
 	}
 
 	std::cout << "   | ";
@@ -244,9 +233,9 @@ void print_match(const buffer& buf,
 			std::cout << red_off;
 		}
 		if (isprint(buf[i])) {
-			std::cout << setw(0) << (char)buf[i];
+			std::cout << std::setw(0) << (char)buf[i];
 		} else {
-			std::cout << setw(0) << '.';
+			std::cout << std::setw(0) << '.';
 		}
 	}
 
@@ -271,7 +260,7 @@ int main(int argc, char** argv)
 	}
 
 	// Go through each input file
-	for (const string& savefile : opts.input_files) {
+	for (const std::string& savefile : opts.input_files) {
 		if (opts.input_files.size() > 1) {
 			std::cout << savefile << ':' << std::endl;
 		}
