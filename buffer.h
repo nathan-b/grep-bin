@@ -307,3 +307,85 @@ public:
 private:
 	std::string m_buf;
 };
+
+/**
+ * Some helper functions to build a buffer from various inputs.
+ */
+class buffer_conversion
+{
+	static uint8_t hex_char_to_num(char c)
+	{
+		switch (c) {
+		case '0': return 0;
+		case '1': return 1;
+		case '2': return 2;
+		case '3': return 3;
+		case '4': return 4;
+		case '5': return 5;
+		case '6': return 6;
+		case '7': return 7;
+		case '8': return 8;
+		case '9': return 9;
+		case 'a': case 'A': return 0xa;
+		case 'b': case 'B': return 0xb;
+		case 'c': case 'C': return 0xc;
+		case 'd': case 'D': return 0xd;
+		case 'e': case 'E': return 0xe;
+		case 'f': case 'F': return 0xf;
+		}
+		return 0xff;
+	}
+public:
+	static buffer* string_to_buffer(const std::string& numstr,
+	                                bool big_endian,
+	                                bool hex)
+	{
+		if (!hex) {
+			// Only hex for now
+			return nullptr;
+		}
+
+		enum {
+			LOW,
+			HIGH
+		} pos;
+
+		std::list<uint8_t> num_list;
+		uint8_t val;
+
+		pos = LOW;
+		for (auto it = numstr.rbegin(); it != numstr.rend(); ++it) {
+			if (pos == LOW) {
+				val = hex_char_to_num(*it);
+				pos = HIGH;
+				if (val == 0xff) return nullptr;
+			} else {
+				uint8_t r = hex_char_to_num(*it);
+				if (r == 0xff) return nullptr;
+				val += r * 0x10;
+				if (big_endian) {
+					num_list.push_front(val);
+				} else {
+					num_list.push_back(val);
+				}
+				pos = LOW;
+			}
+		}
+		if (pos == HIGH) {
+			if (big_endian) {
+				num_list.push_front(val);
+			} else {
+				num_list.push_back(val);
+			}
+		}
+
+		// We now have a list of bytes in the correct endianness
+		arraybuf* ret = new arraybuf(nullptr, num_list.size());
+		uint32_t idx = 0;
+		for (uint8_t i : num_list) {
+			(*ret)[idx++] = i;
+		}
+
+		return ret;
+	}
+};

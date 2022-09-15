@@ -7,89 +7,6 @@
 #include <list>
 #include <gtest/gtest.h>
 
-uint8_t char2num(char c)
-{
-	switch (c) {
-	case '0':
-		return 0;
-	case '1':
-		return 1;
-	case '2':
-		return 2;
-	case '3':
-		return 3;
-	case '4':
-		return 4;
-	case '5':
-		return 5;
-	case '6':
-		return 6;
-	case '7':
-		return 7;
-	case '8':
-		return 8;
-	case '9':
-		return 9;
-	case 'a':
-		return 0xa;
-	case 'b':
-		return 0xb;
-	case 'c':
-		return 0xc;
-	case 'd':
-		return 0xd;
-	case 'e':
-		return 0xe;
-	case 'f':
-		return 0xf;
-	}
-	return 0xff;
-}
-
-buffer* num2buf(const std::string& numstr, bool big_endian, bool hex)
-{
-	if (!big_endian) {
-		// Only be for now
-		return nullptr;
-	}
-
-	if (!hex) {
-		// Only hex for now
-		return nullptr;
-	}
-
-	enum {
-		LOW,
-		HIGH
-	} pos = LOW;
-
-	std::list<uint8_t> num_list;
-	uint8_t val;
-
-	for (auto it = numstr.rbegin(); it != numstr.rend(); ++it) {
-		if (pos == LOW) {
-			val = char2num(*it);
-			pos = HIGH;
-		} else {
-			val += char2num(*it) * 0x10;
-			num_list.push_front(val);
-			pos = LOW;
-		}
-	}
-	if (pos == HIGH) {
-		num_list.push_front(val);
-	}
-
-	// We now have a list of bytes in big-endian order
-	arraybuf* ret = new arraybuf(nullptr, num_list.size());
-	uint32_t idx = 0;
-	for (uint8_t i : num_list) {
-		(*ret)[idx++] = i;
-	}
-
-	return ret;
-}
-
 const char* seed_chars = "abcdefghijklmnopqrstuvwxyz";
 const uint32_t seed_len = 26;
 const uint32_t tb_size = 256;
@@ -200,34 +117,100 @@ TEST(buffer, find_test)
 	}
 }
 
-TEST(buffer, num2buf_tests)
+TEST(buffer, num2buf_be_tests)
 {
 	buffer* buf = nullptr;
 
-	buf = num2buf("a", true, true);
+	buf = buffer_conversion::string_to_buffer("A", true, true);
 	ASSERT_NE(nullptr, buf);
 	ASSERT_EQ((uint32_t)1, buf->length());
 	ASSERT_EQ((uint8_t)0xa, (*buf)[0]);
 	delete buf;
 
-	buf = num2buf("a4", true, true);
+	buf = buffer_conversion::string_to_buffer("a4", true, true);
 	ASSERT_NE(nullptr, buf);
 	ASSERT_EQ((uint32_t)1, buf->length());
 	ASSERT_EQ((uint8_t)0xa4, (*buf)[0]);
 	delete buf;
 
-	buf = num2buf("a4f", true, true);
+	buf = buffer_conversion::string_to_buffer("a4F", true, true);
 	ASSERT_NE(nullptr, buf);
 	ASSERT_EQ((uint32_t)2, buf->length());
-	ASSERT_EQ((uint8_t)0x4f, (*buf)[0]);
-	ASSERT_EQ((uint8_t)0xa, (*buf)[1]);
+	ASSERT_EQ((uint8_t)0xa, (*buf)[0]);
+	ASSERT_EQ((uint8_t)0x4f, (*buf)[1]);
 	delete buf;
 
-	buf = num2buf("a4f0", true, true);
+	buf = buffer_conversion::string_to_buffer("a4f0", true, true);
 	ASSERT_NE(nullptr, buf);
 	ASSERT_EQ((uint32_t)2, buf->length());
-	ASSERT_EQ((uint8_t)0xf0, (*buf)[0]);
+	ASSERT_EQ((uint8_t)0xa4, (*buf)[0]);
+	ASSERT_EQ((uint8_t)0xf0, (*buf)[1]);
+	delete buf;
+
+	buf = buffer_conversion::string_to_buffer("a4f05aff4d0e110a9", true, true);
+	ASSERT_NE(nullptr, buf);
+	ASSERT_EQ((uint32_t)9, buf->length());
+	ASSERT_EQ((uint8_t)0x0a, (*buf)[0]);
+	ASSERT_EQ((uint8_t)0x4f, (*buf)[1]);
+	ASSERT_EQ((uint8_t)0x05, (*buf)[2]);
+	ASSERT_EQ((uint8_t)0xaf, (*buf)[3]);
+	ASSERT_EQ((uint8_t)0xf4, (*buf)[4]);
+	ASSERT_EQ((uint8_t)0xd0, (*buf)[5]);
+	ASSERT_EQ((uint8_t)0xe1, (*buf)[6]);
+	ASSERT_EQ((uint8_t)0x10, (*buf)[7]);
+	ASSERT_EQ((uint8_t)0xa9, (*buf)[8]);
+	delete buf;
+}
+
+TEST(buffer, num2buf_le_tests)
+{
+	buffer* buf = nullptr;
+
+	buf = buffer_conversion::string_to_buffer("a", false, true);
+	ASSERT_NE(nullptr, buf);
+	ASSERT_EQ((uint32_t)1, buf->length());
+	ASSERT_EQ((uint8_t)0xa, (*buf)[0]);
+	delete buf;
+
+	buf = buffer_conversion::string_to_buffer("a4", false, true);
+	ASSERT_NE(nullptr, buf);
+	ASSERT_EQ((uint32_t)1, buf->length());
+	ASSERT_EQ((uint8_t)0xa4, (*buf)[0]);
+	delete buf;
+
+	buf = buffer_conversion::string_to_buffer("a4f", false, true);
+	ASSERT_NE(nullptr, buf);
+	ASSERT_EQ((uint32_t)2, buf->length());
+	ASSERT_EQ((uint8_t)0x0a, (*buf)[1]);
+	ASSERT_EQ((uint8_t)0x4f, (*buf)[0]);
+	delete buf;
+
+	buf = buffer_conversion::string_to_buffer("4F0a", false, true);
+	ASSERT_NE(nullptr, buf);
+	ASSERT_EQ((uint32_t)2, buf->length());
+	ASSERT_EQ((uint8_t)0x0a, (*buf)[0]);
+	ASSERT_EQ((uint8_t)0x4f, (*buf)[1]);
+	delete buf;
+
+	buf = buffer_conversion::string_to_buffer("a4f0", false, true);
+	ASSERT_NE(nullptr, buf);
+	ASSERT_EQ((uint32_t)2, buf->length());
 	ASSERT_EQ((uint8_t)0xa4, (*buf)[1]);
+	ASSERT_EQ((uint8_t)0xf0, (*buf)[0]);
+	delete buf;
+
+	buf = buffer_conversion::string_to_buffer("a4f05aff4d0E110a9", false, true);
+	ASSERT_NE(nullptr, buf);
+	ASSERT_EQ((uint32_t)9, buf->length());
+	ASSERT_EQ((uint8_t)0xa9, (*buf)[0]);
+	ASSERT_EQ((uint8_t)0x10, (*buf)[1]);
+	ASSERT_EQ((uint8_t)0xe1, (*buf)[2]);
+	ASSERT_EQ((uint8_t)0xd0, (*buf)[3]);
+	ASSERT_EQ((uint8_t)0xf4, (*buf)[4]);
+	ASSERT_EQ((uint8_t)0xaf, (*buf)[5]);
+	ASSERT_EQ((uint8_t)0x05, (*buf)[6]);
+	ASSERT_EQ((uint8_t)0x4f, (*buf)[7]);
+	ASSERT_EQ((uint8_t)0x0a, (*buf)[8]);
 	delete buf;
 }
 
