@@ -115,6 +115,30 @@ TEST(buffer, find_test)
 		res.pop_front();
 		ASSERT_EQ((uint32_t)21, res.front());
 	}
+
+	{
+		arraybuf needle({0x00, 0x01, 0x9f});
+		auto res = ab.find_all(needle);
+		ASSERT_EQ((uint32_t)1, res.size());
+		ASSERT_EQ((uint32_t)37, res.front());
+	}
+
+	{
+		arraybuf needle({0x73});
+		auto res = ab.find_all(needle);
+		ASSERT_EQ((uint32_t)2, res.size());
+		uint32_t val = res.front();
+		ASSERT_EQ((uint32_t)12, val);
+		res.pop_front();
+		val = res.front();
+		ASSERT_EQ((uint32_t)27, val);
+	}
+
+	{
+		auto res = ab.find_all(ab);
+		ASSERT_EQ((uint32_t)1, res.size());
+		ASSERT_EQ((uint32_t)0, res.front());
+	}
 }
 
 TEST(buffer, num2buf_be_tests)

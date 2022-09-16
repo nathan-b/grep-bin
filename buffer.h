@@ -100,7 +100,7 @@ public:
 			return UINT32_MAX;
 		}
 
-		for (uint32_t i = 0; i < len - needle_len; ++i) {
+		for (uint32_t i = 0; i <= len - needle_len; ++i) {
 			if (cmp(needle, i)) {
 				return i;
 			}
@@ -124,7 +124,7 @@ public:
 			return ret;
 		}
 
-		for (uint32_t i = start_at; i < len - needle_len; ++i) {
+		for (uint32_t i = start_at; i <= len - needle_len; ++i) {
 			if (cmp(needle, i)) {
 				ret.push_back(i);
 				i += (needle_len - 1);
