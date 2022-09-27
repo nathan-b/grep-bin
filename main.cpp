@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <arpa/inet.h>
+#include <sys/ioctl.h>
 
 #include "buffer.h"
 
@@ -22,8 +23,8 @@ struct options
 	std::string search_string;
 	std::unique_ptr<buffer> search_bytes;
 	std::list<std::string> input_files;
-	uint8_t context_before;
-	uint8_t context_after;
+	int16_t context_before;
+	int16_t context_after;
 };
 
 void save_file(const std::string& filename, const buffer& buf)
@@ -48,11 +49,37 @@ void usage()
 			  << "   or: gb -s <string> <filename> [<filename> ...]\n";
 }
 
+bool get_window_dimensions(uint32_t& rows, uint32_t& cols)
+{
+	struct winsize ws;
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) < 0) {
+		return false;
+	}
+	rows = ws.ws_row;
+	cols = ws.ws_col;
+
+	return true;
+}
+
+uint32_t get_default_context_len(uint32_t needle_len)
+{
+	uint32_t rows, cols;
+	if (!get_window_dimensions(rows, cols)) {
+		return 16;
+	}
+
+	// Each byte of context and needle requires 4 characters
+	// There's two contexts (before and after) for an additional /2
+	// 17 characters of "slush"
+	// Extra -1 in there because sometimes the numbers don't divide evenly
+	return ((((cols - 17 - (needle_len * 4)) / 4) - 1) / 2);
+}
+
 bool get_opts(int argc, char** argv, options& opts)
 {
 	bool got_needle = false, got_haystack = false;
-	opts.context_before = 16;
-	opts.context_after = 16;
+	opts.context_before = -1;
+	opts.context_after = -1;
 	std::vector<uint8_t> needle_bytes;
 	std::string needle_string;
 
@@ -184,15 +211,23 @@ bool get_opts(int argc, char** argv, options& opts)
 void print_match(const buffer& buf,
 	uint32_t offset,
 	uint32_t needle_len,
-	uint32_t context_before,
-	uint32_t context_after)
+	int16_t context_before,
+	int16_t context_after)
 {
 	const char red_on[] = "\x1B[31m";
 	const char red_off[] = "\033[0m";
 
+	int16_t default_context_len = get_default_context_len(needle_len);
+	if (context_before < 0) {
+		context_before = default_context_len;
+	}
+	if (context_after < 0) {
+		context_after = default_context_len;
+	}
+
 	uint32_t len = context_before + context_after + needle_len;
 	uint32_t start = offset;
-	if (start > context_before) {
+	if (start > (uint16_t)context_before) {
 		start -= context_before;
 	} else {
 		start = 0;
