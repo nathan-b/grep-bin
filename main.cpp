@@ -42,11 +42,10 @@ void save_file(const std::string& filename, const buffer& buf)
 
 void usage()
 {
-	std::cerr << "Usage: gb <string> <filename> [<filename> ...] \n"
-			  << "   or: gb -b <byte#> <byte> [-b ...] <filename> [<filename> ...]\n"
-			  << "   or: gb -be <big-endian value> <filename> [<filename> ...]\n"
-			  << "   or: gb -le <little-endian value> <filename> [<filename> ...]\n"
-			  << "   or: gb -s <string> <filename> [<filename> ...]\n";
+	std::cerr << "Usage: gb [-s] <string> [<filename> <filename> ...] \n"
+			  << "   or: gb -b <byte#> <byte> [-b ...] [<filename> <filename> ...]\n"
+			  << "   or: gb -be <big-endian value> [<filename> <filename> ...]\n"
+			  << "   or: gb -le <little-endian value> [<filename> <filename> ...]\n"
 }
 
 bool get_window_dimensions(uint32_t& rows, uint32_t& cols)
@@ -77,7 +76,7 @@ uint32_t get_default_context_len(uint32_t needle_len)
 
 bool get_opts(int argc, char** argv, options& opts)
 {
-	bool got_needle = false, got_haystack = false;
+	bool got_needle = false;
 	opts.context_before = -1;
 	opts.context_after = -1;
 	std::vector<uint8_t> needle_bytes;
@@ -194,7 +193,6 @@ bool get_opts(int argc, char** argv, options& opts)
 				needle_string = argv[i];
 				got_needle = true;
 			} else {
-				got_haystack = true;
 				opts.input_files.emplace_back(argv[i]);
 			}
 		}
@@ -205,7 +203,7 @@ bool get_opts(int argc, char** argv, options& opts)
 	} else if (!needle_string.empty()) {
 		opts.search_bytes = std::make_unique<strbuf>(needle_string);
 	}
-	return got_needle && got_haystack;
+	return got_needle;
 }
 
 void print_match(const buffer& buf,
@@ -279,7 +277,6 @@ int main(int argc, char** argv)
 	 *  - Find and replace
 	 *  - Accept input from pipe
 	 *  - More flexible search terms / options
-	 *  - Get terminal / screen width
 	 */
 	options opts;
 
