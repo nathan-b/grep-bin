@@ -91,7 +91,8 @@ public:
 	 *
 	 * Returns the offset, or UINT32_MAX if not found.
 	 */
-	virtual uint32_t find_first(const buffer& needle) const
+	virtual uint32_t find_first(const buffer& needle,
+	                            uint32_t start_at = 0) const
 	{
 		const uint32_t len = length();
 		const uint32_t needle_len = needle.length();
@@ -100,7 +101,7 @@ public:
 			return UINT32_MAX;
 		}
 
-		for (uint32_t i = 0; i <= len - needle_len; ++i) {
+		for (uint32_t i = start_at; i <= len - needle_len; ++i) {
 			if (cmp(needle, i)) {
 				return i;
 			}
@@ -132,6 +133,41 @@ public:
 		}
 
 		return ret;
+	}
+
+
+	/*************************************************************************
+	 * Read various types from the buffer
+	 *   Bounds checking not guaranteed.
+	 */
+	int16_t read_short(uint32_t offset) const
+	{
+		return *(int16_t*)(&(*this)[offset]);
+	}
+
+	uint16_t read_ushort(uint32_t offset) const
+	{
+		return *(uint16_t*)(&(*this)[offset]);
+	}
+
+	int32_t read_int(uint32_t offset) const
+	{
+		return *(int32_t*)(&(*this)[offset]);
+	}
+
+	uint32_t read_uint(uint32_t offset) const
+	{
+		return *(uint32_t*)(&(*this)[offset]);
+	}
+
+	int64_t read_long(uint32_t offset) const
+	{
+		return *(int64_t*)(&(*this)[offset]);
+	}
+
+	uint64_t read_ulong(uint32_t offset) const
+	{
+		return *(uint64_t*)(&(*this)[offset]);
 	}
 };
 

@@ -45,7 +45,7 @@ void usage()
 	std::cerr << "Usage: gb [-s] <string> [<filename> <filename> ...] \n"
 			  << "   or: gb -b <byte#> <byte> [-b ...] [<filename> <filename> ...]\n"
 			  << "   or: gb -be <big-endian value> [<filename> <filename> ...]\n"
-			  << "   or: gb -le <little-endian value> [<filename> <filename> ...]\n"
+			  << "   or: gb -le <little-endian value> [<filename> <filename> ...]\n";
 }
 
 bool get_window_dimensions(uint32_t& rows, uint32_t& cols)
@@ -207,10 +207,10 @@ bool get_opts(int argc, char** argv, options& opts)
 }
 
 void print_match(const buffer& buf,
-	uint32_t offset,
-	uint32_t needle_len,
-	int16_t context_before,
-	int16_t context_after)
+                 uint32_t offset,
+                 uint32_t needle_len,
+                 uint32_t context_before,
+                 uint32_t context_after)
 {
 	const char red_on[] = "\x1B[31m";
 	const char red_off[] = "\033[0m";
@@ -241,10 +241,10 @@ void print_match(const buffer& buf,
 		if (i == offset) {
 			std::cout << red_on;
 		}
-		if (i == offset + needle_len) {
+		std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)buf[i] << ' ';
+		if (i == offset + needle_len - 1) {
 			std::cout << red_off;
 		}
-		std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)buf[i] << ' ';
 	}
 
 	std::cout << "   | ";
@@ -257,13 +257,13 @@ void print_match(const buffer& buf,
 		if (i == offset) {
 			std::cout << red_on;
 		}
-		if (i == offset + needle_len) {
-			std::cout << red_off;
-		}
 		if (isprint(buf[i])) {
 			std::cout << std::setw(0) << (char)buf[i];
 		} else {
 			std::cout << std::setw(0) << '.';
+		}
+		if (i == offset + needle_len - 1) {
+			std::cout << red_off;
 		}
 	}
 
