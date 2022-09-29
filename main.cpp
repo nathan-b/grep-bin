@@ -209,8 +209,8 @@ bool get_opts(int argc, char** argv, options& opts)
 void print_match(const buffer& buf,
                  uint32_t offset,
                  uint32_t needle_len,
-                 uint32_t context_before,
-                 uint32_t context_after)
+                 int16_t context_before,
+                 int16_t context_after)
 {
 	const char red_on[] = "\x1B[31m";
 	const char red_off[] = "\033[0m";
