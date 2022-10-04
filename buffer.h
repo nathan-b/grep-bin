@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <initializer_list>
+#include <iostream>
 #include <iterator>
 #include <list>
 #include <memory>
@@ -240,7 +241,7 @@ public:
 	arraybuf(std::initializer_list<uint8_t>&& in_list)
 	{
 		m_len = in_list.size();
-		m_buf = new uint8_t(m_len);
+		m_buf = new uint8_t[m_len];
 		m_free = true;
 		uint8_t* pos = m_buf;
 
@@ -275,6 +276,60 @@ public:
 		infile.seekg(0, std::ios::beg);
 		infile.read((char*)m_buf, m_len);
 		infile.close();
+	}
+
+	/**
+	 * Create and populate a buffer from a stream.
+	 *
+	 * This constructor will read from the stream until EOF / error. So
+	 * make sure any stream you give it will eventually finish.
+	 */
+	arraybuf(std::istream& stream) :
+		m_buf(nullptr),
+		m_len(0),
+		m_free(false)
+	{
+		const uint32_t buf_len = 65536;
+		std::list<uint8_t*> buf_list;
+		uint8_t* buf = nullptr;
+		uint32_t total_len = 0;
+
+		// Read the stream until EOF
+		while (stream) {
+			buf = new uint8_t[buf_len];
+			stream.read((char*)buf, buf_len);
+			if (stream.gcount() > UINT32_MAX - total_len) {
+				// Buffer too large to fit in memory
+				total_len = UINT32_MAX;
+			} else {
+				total_len += stream.gcount();
+			}
+			buf_list.push_back(buf);
+			buf = nullptr;
+		}
+
+		// Now construct the buffer from the individual chunks
+		uint32_t remaining_len = total_len;
+		uint32_t bufp = 0;
+		m_buf = new uint8_t[total_len];
+		for (auto* b : buf_list) {
+			uint32_t to_copy = buf_len;
+			if (to_copy > remaining_len)
+			{
+				to_copy = remaining_len;
+			}
+			memcpy(&m_buf[bufp], b, to_copy);
+			bufp += to_copy;
+			remaining_len -= to_copy;
+
+			delete[] b;
+		}
+
+		if (remaining_len > 0) {
+			std::cerr << "Logic error: did not copy entre stream!\n";
+		}
+		m_len = total_len;
+		m_free = true;
 	}
 
 	~arraybuf()

@@ -235,7 +235,7 @@ void print_match(const buffer& buf,
 	// <offset>:  <context-before><match><context-after>    | ASCII........  |
 	std::cout << std::hex << std::setw(8) << std::setfill(' ') << start << ":  ";
 	for (uint32_t i = start; i < start + len; ++i) {
-		if (i > buf.length()) {
+		if (i >= buf.length()) {
 			break;
 		}
 		if (i == offset) {
@@ -251,7 +251,7 @@ void print_match(const buffer& buf,
 
 	// Now do it again to print the ASCII representation...
 	for (uint32_t i = start; i < start + len; ++i) {
-		if (i > buf.length()) {
+		if (i >= buf.length()) {
 			break;
 		}
 		if (i == offset) {
@@ -275,7 +275,6 @@ int main(int argc, char** argv)
 	/*
 	 * TODO:
 	 *  - Find and replace
-	 *  - Accept input from pipe
 	 *  - More flexible search terms / options
 	 */
 	options opts;
@@ -285,29 +284,40 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
+	if (opts.input_files.empty()) {
+		// Read from stdin
+		opts.input_files.push_back("-");
+	}
+
 	// Go through each input file
 	for (const std::string& savefile : opts.input_files) {
 		if (opts.input_files.size() > 1) {
 			std::cout << savefile << ':' << std::endl;
 		}
+
 		// Read the file
-		arraybuf buf(savefile);
-		if (buf.length() == 0) {
+		std::unique_ptr<buffer> buf;
+
+		if (savefile == "-") {
+			buf = std::make_unique<arraybuf>(std::cin);
+		} else {
+			buf = std::make_unique<arraybuf>(savefile);
+		}
+		if (buf->length() == 0) {
 			std::cerr << "Could not read file " << savefile << std::endl;
 			return -2;
 		}
-
 		// Search the file
 		uint32_t needle_len = opts.search_bytes->length();
 		if (needle_len == 0) {
 			std::cerr << "Null search string\n";
 			return -3;
 		}
-		std::list<uint32_t> offsets = buf.find_all(*opts.search_bytes);
+		std::list<uint32_t> offsets = buf->find_all(*opts.search_bytes);
 
 		// Print each output with context
 		for (uint32_t offset : offsets) {
-			print_match(buf, offset, needle_len, opts.context_before, opts.context_after);
+			print_match(*buf, offset, needle_len, opts.context_before, opts.context_after);
 		}
 	}
 
