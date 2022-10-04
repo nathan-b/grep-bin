@@ -13,7 +13,7 @@ TESTFILES=buftest.cpp
 LIBS=
 TESTLIBS=$(OUTDIR)/lib/libgtest.a
 
-all: debug
+all: debug test
 
 $(OUTDIR):
 	mkdir -p $(OUTDIR)
