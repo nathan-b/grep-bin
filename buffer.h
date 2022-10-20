@@ -295,11 +295,11 @@ public:
 		uint32_t total_len = 0;
 
 		// Read the stream until EOF
-		while (stream) {
+		while (stream && total_len < UINT32_MAX) {
 			buf = new uint8_t[buf_len];
 			stream.read((char*)buf, buf_len);
 			if (stream.gcount() > UINT32_MAX - total_len) {
-				// Buffer too large to fit in memory
+				// Buffer too large
 				total_len = UINT32_MAX;
 			} else {
 				total_len += stream.gcount();
@@ -314,8 +314,7 @@ public:
 		m_buf = new uint8_t[total_len];
 		for (auto* b : buf_list) {
 			uint32_t to_copy = buf_len;
-			if (to_copy > remaining_len)
-			{
+			if (to_copy > remaining_len) {
 				to_copy = remaining_len;
 			}
 			memcpy(&m_buf[bufp], b, to_copy);

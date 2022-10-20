@@ -276,6 +276,7 @@ int main(int argc, char** argv)
 	 * TODO:
 	 *  - Find and replace
 	 *  - More flexible search terms / options
+	 *  - Turn buffer code into a separate library
 	 */
 	options opts;
 
