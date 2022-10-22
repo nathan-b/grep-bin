@@ -141,6 +141,22 @@ TEST(buffer, find_test)
 	}
 }
 
+TEST(buffer, find_test_2)
+{
+	const uint32_t len = 256;
+	const char* seed_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+	std::vector<uint8_t> vec(len);
+
+	for (uint32_t i = 0; i < len; ++i) {
+		vec[i] = seed_chars[i % 52];
+	}
+
+	arraybuf ab(vec);
+	uint32_t result = ab.find_first(arraybuf{'Z', 'a', 'b'});
+
+	ASSERT_EQ((uint32_t)25, result);
+}
+
 TEST(buffer, num2buf_be_tests)
 {
 	std::unique_ptr<buffer> buf = nullptr;
