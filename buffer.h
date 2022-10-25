@@ -53,7 +53,7 @@ public:
 		pointer m_pointer;
 	};
 
-	virtual ~buffer() {}
+	virtual ~buffer() = default;
 
 	virtual uint32_t length() const = 0;
 
@@ -102,7 +102,12 @@ public:
 			return UINT32_MAX;
 		}
 
-		for (uint32_t i = start_at; i <= len - needle_len; ++i) {
+		uint32_t upto = len - needle_len;
+		uint8_t needle_start = needle[0];
+		for (uint32_t i = start_at; i <= upto; ++i) {
+			// Optimization: compare the first bytes to see if we should even
+			// bother calling cmp at all
+			if (needle_start != (*this)[i]) continue;
 			if (cmp(needle, i)) {
 				return i;
 			}
@@ -126,10 +131,14 @@ public:
 			return ret;
 		}
 
-		for (uint32_t i = start_at; i <= len - needle_len; ++i) {
+		uint32_t upto = len - needle_len;
+		uint8_t needle_start = needle[0];
+		for (uint32_t i = start_at; i <= upto; ++i) {
+			// Optimization: compare the first bytes to see if we should even
+			// bother calling cmp at all
+			if (needle_start != (*this)[i]) continue;
 			if (cmp(needle, i)) {
 				ret.push_back(i);
-				i += (needle_len - 1);
 			}
 		}
 

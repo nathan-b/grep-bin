@@ -106,14 +106,19 @@ TEST(buffer, find_test)
 		uint8_t ndata[] = { 0x00, 0x00 };
 		arraybuf needle(ndata, 2);
 		auto res = ab.find_all(needle);
-		ASSERT_EQ((uint32_t)4, res.size());
+		ASSERT_EQ((uint32_t)6, res.size());
 		ASSERT_EQ((uint32_t)6, res.front());
+		res.pop_front();
+		ASSERT_EQ((uint32_t)7, res.front());
 		res.pop_front();
 		ASSERT_EQ((uint32_t)14, res.front());
 		res.pop_front();
 		ASSERT_EQ((uint32_t)19, res.front());
 		res.pop_front();
+		ASSERT_EQ((uint32_t)20, res.front());
+		res.pop_front();
 		ASSERT_EQ((uint32_t)21, res.front());
+		res.pop_front();
 	}
 
 	{
@@ -141,7 +146,7 @@ TEST(buffer, find_test)
 	}
 }
 
-TEST(buffer, find_test_2)
+TEST(buffer, find_test_targeted)
 {
 	const uint32_t len = 256;
 	const char* seed_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -151,10 +156,25 @@ TEST(buffer, find_test_2)
 		vec[i] = seed_chars[i % 52];
 	}
 
-	arraybuf ab(vec);
-	uint32_t result = ab.find_first(arraybuf{'Z', 'a', 'b'});
+	{
+		arraybuf ab(vec);
+		uint32_t result = ab.find_first(arraybuf{'Z', 'a', 'b'});
 
-	ASSERT_EQ((uint32_t)25, result);
+		ASSERT_EQ((uint32_t)25, result);
+	}
+
+	for (uint32_t i = 0; i < len; ++i) {
+		vec[i] = 'a';
+	}
+
+	{
+		arraybuf ab(vec);
+		ASSERT_EQ(len, ab.length());
+		ASSERT_EQ((uint8_t)'a', ab[0]);
+
+		auto result = ab.find_all(arraybuf{'a'});
+		ASSERT_EQ(len, result.size());
+	}
 }
 
 TEST(buffer, num2buf_be_tests)
