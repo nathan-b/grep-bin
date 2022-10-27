@@ -263,6 +263,90 @@ TEST(buffer, num2buf_le_tests)
 	ASSERT_EQ((uint8_t)0x0a, (*buf)[8]);
 }
 
+TEST(buffer_needle, match_first)
+{
+	uint8_t corpus[] = { 0x6f, 0x00, 0x1e, 0xef, 0x2b, 0x94, 0x00, 0x00,
+	                     0x00, 0x04, 0x6c, 0x69, 0x73, 0x74, 0x00, 0x00,
+						 0x07, 0x2b, 0x95, 0x00, 0x00, 0x00, 0x00, 0x49,
+						 0x6c, 0x6c, 0x69, 0x73, 0x61, 0x20, 0x4b, 0x65,
+						 0x70, 0x70, 0x65, 0x49, 0x61, 0x00, 0x01, 0x9f };
+
+	arraybuf ab(corpus, sizeof(corpus));
+
+	{
+		buffer_needle bn({0x00, 0x01, 0x02});
+		uint32_t offset = bn.first_match(ab, 0);
+		ASSERT_EQ((uint32_t)UINT32_MAX, offset);
+	}
+
+	{
+		buffer_needle bn({0x00, 0x01, 0x9f});
+		uint32_t offset = bn.first_match(ab, 0);
+		ASSERT_EQ((uint32_t)37, offset);
+
+		offset = bn.first_match(ab, 38);
+		ASSERT_EQ((uint32_t)UINT32_MAX, offset);
+	}
+
+	{
+		buffer_needle bn({0x00, 0x00});
+		uint32_t offset = bn.first_match(ab, 0);
+		ASSERT_EQ((uint32_t)6, offset);
+
+		offset = bn.first_match(ab, 6);
+		ASSERT_EQ((uint32_t)6, offset);
+
+		offset = bn.first_match(ab, 7);
+		ASSERT_EQ((uint32_t)7, offset);
+
+		offset = bn.first_match(ab, 8);
+		ASSERT_EQ((uint32_t)14, offset);
+	}
+}
+
+TEST(buffer_needle, match_all)
+{
+	uint8_t corpus[] = { 0x6f, 0x00, 0x1e, 0xef, 0x2b, 0x94, 0x00, 0x00,
+	                     0x00, 0x04, 0x6c, 0x69, 0x73, 0x74, 0x00, 0x00,
+						 0x07, 0x2b, 0x95, 0x00, 0x00, 0x00, 0x00, 0x49,
+						 0x6c, 0x6c, 0x69, 0x73, 0x61, 0x20, 0x4b, 0x65,
+						 0x70, 0x70, 0x65, 0x49, 0x61, 0x00, 0x01, 0x9f };
+
+	arraybuf ab(corpus, sizeof(corpus));
+
+	{
+		buffer_needle bn({0x00, 0x01, 0x02});
+		auto offlist = bn.match(ab, 0);
+		ASSERT_EQ((uint32_t)0, offlist.size());
+	}
+
+	{
+		buffer_needle bn({0x00, 0x01, 0x9f});
+		auto offlist = bn.match(ab, 0);
+		ASSERT_EQ((uint32_t)1, offlist.size());
+		ASSERT_EQ((uint32_t)37, offlist.front());
+	}
+
+	{
+		buffer_needle bn({0x00, 0x00});
+		auto offlist = bn.match(ab, 0);
+
+		ASSERT_EQ((uint32_t)6, offlist.size());
+		ASSERT_EQ((uint32_t)6, offlist.front());
+		offlist.pop_front();
+		ASSERT_EQ((uint32_t)7, offlist.front());
+		offlist.pop_front();
+		ASSERT_EQ((uint32_t)14, offlist.front());
+		offlist.pop_front();
+		ASSERT_EQ((uint32_t)19, offlist.front());
+		offlist.pop_front();
+		ASSERT_EQ((uint32_t)20, offlist.front());
+		offlist.pop_front();
+		ASSERT_EQ((uint32_t)21, offlist.front());
+		offlist.pop_front();
+	}
+}
+
 int main(int argc, char** argv)
 {
 	setup();

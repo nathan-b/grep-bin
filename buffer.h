@@ -514,3 +514,86 @@ public:
 		return ret;
 	}
 };
+
+/**
+ * A byte or series of bytes to search for.
+ */
+class needle
+{
+public:
+	virtual ~needle() = default;
+
+	virtual uint32_t length() const = 0;
+
+	virtual uint32_t first_match(const buffer& buf, uint32_t start = 0) const = 0;
+	virtual std::list<uint32_t> match(const buffer& buf, uint32_t start = 0) const = 0;
+};
+
+/**
+ * A needle backed by a buffer. No wildcard support.
+ */
+class buffer_needle : public needle
+{
+public:
+	buffer_needle(uint8_t* arr, uint32_t len) :
+		m_buf(arr, len)
+	{}
+
+	buffer_needle(const std::vector<uint8_t>& vec) :
+		m_buf(vec)
+	{}
+
+	buffer_needle(std::initializer_list<uint8_t>&& in_list) :
+		m_buf(in_list)
+	{}
+
+	virtual uint32_t length() const override { return m_buf.length(); }
+
+	virtual uint32_t first_match(const buffer& haystack, uint32_t start = 0) const
+	{
+		const uint32_t needle_len = length();
+		const uint32_t buf_len = haystack.length();
+
+		if (needle_len > buf_len) {
+			return UINT32_MAX;
+		}
+
+		uint32_t upto = buf_len - needle_len;
+		uint8_t needle_start = m_buf[0];
+		for (uint32_t i = start; i <= upto; ++i) {
+			// Optimization: compare the first bytes to see if we should even
+			// bother calling cmp at all
+			if (needle_start != haystack[i]) continue;
+			if (haystack.cmp(m_buf, i)) {
+				return i;
+			}
+		}
+		return UINT32_MAX;
+	}
+
+	virtual std::list<uint32_t> match(const buffer& haystack, uint32_t start = 0) const
+	{
+		std::list<uint32_t> ret;
+		const uint32_t haystack_len = haystack.length();
+		const uint32_t needle_len = length();
+
+		if (needle_len > haystack_len) {
+			return ret;
+		}
+
+		uint32_t upto = haystack_len - needle_len;
+		uint8_t needle_start = m_buf[0];
+		for (uint32_t i = start; i <= upto; ++i) {
+			// Optimization: compare the first bytes to see if we should even
+			// bother calling cmp at all
+			if (needle_start != haystack[i]) continue;
+			if (haystack.cmp(m_buf, i)) {
+				ret.push_back(i);
+			}
+		}
+
+		return ret;
+	}
+private:
+	const arraybuf m_buf;
+};
