@@ -347,6 +347,111 @@ TEST(buffer_needle, match_all)
 	}
 }
 
+TEST(wcl_needle, byte_match)
+{
+	uint8_t corpus[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+	                     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+						 0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80,
+						 0x98, 0xa4, 0xbc, 0xc7, 0xd9, 0xef, 0xf1, 0xff };
+	uint16_t _ = 0;
+	wildcard_const_len wcl(&_, 1);
+
+	// Exact match
+	ASSERT_TRUE(wcl.byte_match(0x00, 0xff00));
+	ASSERT_FALSE(wcl.byte_match(0x00, 0xff01));
+	ASSERT_TRUE(wcl.byte_match(0x07, 0xff07));
+	ASSERT_FALSE(wcl.byte_match(0x07, 0xff06));
+	ASSERT_TRUE(wcl.byte_match(0xff, 0xffff));
+	ASSERT_FALSE(wcl.byte_match(0xff, 0xfffe));
+
+	// Complete wildcard
+	for (uint32_t i = 0; i < 8; ++i) {
+		ASSERT_TRUE(wcl.byte_match(corpus[i], 0x0000));
+		ASSERT_TRUE(wcl.byte_match(corpus[i], 0x00ff));
+	}
+
+	uint8_t mask = ~0x7;
+	for (uint32_t i = 0; i < 8; ++i) {
+		ASSERT_TRUE(wcl.byte_match(corpus[i], (mask << 8) | 0x00));
+		ASSERT_TRUE(wcl.byte_match(corpus[i], (mask << 8) | 0x07));
+	}
+
+	mask = ~0xf;
+	for (uint32_t i = 8; i < 16; ++i) {
+		ASSERT_TRUE(wcl.byte_match(corpus[i], (mask << 8) | 0x00));
+		ASSERT_TRUE(wcl.byte_match(corpus[i], (mask << 8) | 0x07));
+		ASSERT_TRUE(wcl.byte_match(corpus[i], (mask << 8) | 0x0f));
+	}
+
+	mask = 0xf;
+	ASSERT_TRUE(wcl.byte_match(0x98, (mask << 8) | 0x08));
+	ASSERT_TRUE(wcl.byte_match(0x98, (mask << 8) | 0x58));
+	ASSERT_FALSE(wcl.byte_match(0x98, (mask << 8) | 0x09));
+	ASSERT_TRUE(wcl.byte_match(0x97, (mask << 8) | 0x07));
+	ASSERT_TRUE(wcl.byte_match(0x97, (mask << 8) | 0xf7));
+	ASSERT_FALSE(wcl.byte_match(0x97, (mask << 8) | 0x08));
+}
+
+TEST(wcl_needle, match)
+{
+	uint8_t corpus[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+	                     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+						 0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80,
+						 0x98, 0xa4, 0xbc, 0xc7, 0xd9, 0xef, 0xf1, 0xff,
+						 0x6f, 0x00, 0x1e, 0xef, 0x2b, 0x94, 0x00, 0x00,
+	                     0x00, 0x04, 0x6c, 0x69, 0x73, 0x74, 0x00, 0x00,
+						 0x07, 0x2b, 0x95, 0x00, 0x00, 0x00, 0x00, 0x49,
+						 0x6c, 0x6c, 0x69, 0x73, 0x61, 0x20, 0x4b, 0x65,
+						 0x70, 0x70, 0x65, 0x49, 0x61, 0x00, 0x01, 0x9f };
+
+	arraybuf ab(corpus, sizeof(corpus));
+
+	// Exact match
+	{
+		wildcard_const_len wcl_exact({0xff2b, 0xff95});
+
+		ASSERT_EQ((uint32_t)49, wcl_exact.first_match(ab));
+	}
+	{
+		wildcard_const_len wcl_exact({0xff70});
+		uint32_t expected[] = {22, 64, 65};
+
+		auto rlist = wcl_exact.match(ab);
+
+		ASSERT_EQ((uint32_t)3, rlist.size());
+
+		for (uint32_t i = 0; i < 3; ++i) {
+			uint32_t idx = rlist.front();
+			rlist.pop_front();
+			ASSERT_EQ(expected[i], idx);
+		}
+	}
+
+	// Bitmask match
+	{
+		wildcard_const_len wcl_mask({0x41ff, 0xff61});
+
+		ASSERT_EQ((uint32_t)59, wcl_mask.first_match(ab));
+		ASSERT_EQ((uint32_t)67, wcl_mask.first_match(ab, 60));
+	}
+
+	// Full wildcard
+	// Find all numbers between two odd numbers
+	{
+		wildcard_const_len wcl_wildcard({0x0101, 0x0000, 0x0101});
+
+		auto rlist = wcl_wildcard.match(ab);
+
+		ASSERT_EQ((uint32_t)16, rlist.size());
+
+		for (auto i : rlist) {
+			ASSERT_LE(i + 3, ab.length());
+			ASSERT_EQ(0x1, ab[i] & 0x1);
+			ASSERT_EQ(0x1, ab[i + 2] & 0x1);
+		}
+	}
+}
+
 int main(int argc, char** argv)
 {
 	setup();

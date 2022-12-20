@@ -428,6 +428,7 @@ private:
  */
 class buffer_conversion
 {
+public:
 	static uint8_t hex_char_to_num(char c)
 	{
 		switch (c) {
@@ -450,7 +451,7 @@ class buffer_conversion
 		}
 		return 0xff;
 	}
-public:
+
 	static std::unique_ptr<buffer> number_string_to_buffer(const std::string& str,
 	                                                       bool big_endian,
 	                                                       bool hex)
@@ -516,7 +517,7 @@ public:
 };
 
 /**
- * A byte or series of bytes to search for.
+ * Object representing a search target.
  */
 class needle
 {
@@ -596,4 +597,189 @@ public:
 	}
 private:
 	const arraybuf m_buf;
+};
+
+
+/**
+ * A needle with wildcard support. Each wildcard only represents a single character,
+ * meaning that the search results will all be the same length.
+ *
+ * How to specify a search string:
+ *  - As a string object: "0x4a28?15"
+ *    - Use the from_string builder
+ *    - Valid wildcards:
+ *      .  : A . wildcard represents 4 bits (half a byte). For example,
+             0x.a will match 0x0a through 0xfa.
+		.* : For a wildcard_const_len needle, .* is equivalent to .., so
+		     0x0a.*0c will match 0x0a000c or 0x0aff0c but not 0x0a0b0d0c.
+			 A pattern like 0xa.*d will interpret the . and * as one nibble
+			 each, so this pattern will match 0xa00d through 0xaffd.
+ *  - As a map of offsets to expected values
+ *    - Use the from_map builder
+ *    - Any internal offsets not specified become wildcards
+ *  - As an array of 16-bit values
+ *    - The high end is a bitmask representing which bytes to match, and the
+ *      low end is the target value. For example, 0xf0ff will match any byte
+ *      where the top four bits are set (0xf0 through 0xff), while 0xf000 will
+ *      match any byte where the top four bits are unset. 0x01ff (or 0x0101 or
+ *      0x010f, which are all equivalent) will match any byte with the least
+ *      significant bit set (so any odd number).
+ */
+class wildcard_const_len : public needle
+{
+	enum char_type
+	{
+		DIGIT,
+		WILDCARD,
+		INVALID
+	};
+
+	static char_type get_char_type(char c)
+	{
+		switch (c) {
+		case '.':
+		case '*':
+			return WILDCARD;
+		case '0': case '1': case '2': case '3':
+		case '4': case '5': case '6': case '7':
+		case '8': case '9':	case 'a': case 'b':
+		case 'c': case 'd': case 'e': case 'f':
+		case 'A': case 'B': case 'C': case 'D':
+		case 'E': case 'F':
+			return DIGIT;
+		default:
+			return INVALID;
+		}
+	}
+
+public:
+	//
+	// Factories
+	//
+
+	/**
+	 * Build a needle from a wildcard string
+	 *
+	 * Valid wildcards:
+     *  .  : A . wildcard represents 4 bits (half a byte). For example,
+     *       0x.a will match 0x0a through 0xfa.
+	 *	.* : For a wildcard_const_len needle, .* is equivalent to .., so
+	 *	     0x0a.*0c will match 0x0a000c or 0x0aff0c but not 0x0a0b0d0c.
+	 *		 A pattern like 0xa.*d will interpret the . and * as one nibble
+	 *		 each, so this pattern will match 0xa00d through 0xaffd.
+	 */
+	static std::unique_ptr<wildcard_const_len> from_string(const std::string& str)
+	{
+		return nullptr;
+	}
+
+	/**
+	 * Build a needle from a map of offsets to values.
+	 *
+	 * Any offsets between the minimum and maximum offset become wildcards.
+	 * Example:
+	 *     [1] -> 0xff
+	 *     [2] -> 0xfe
+	 *     [4] -> 0xfc
+	 *   This will translate to "0xfffe..fc", where the byte at offset 3
+	 *   is a wildcard. It will match any value from 0xfffe00fc to 0xfffefffc.
+	 */
+	template<typename map_t>
+	static std::unique_ptr<wildcard_const_len> from_map(map_t map)
+	{
+		return nullptr;
+	}
+
+	//
+	// Methods
+	//
+
+	///
+	/// The needle array is a 16-bit integer array
+	/// The high end is a bitmask of which bits to match.
+	///   0x00 matches nothing -- full wildcard
+	///   0xff matches everything -- exact value
+	/// The low end is the match value.
+	wildcard_const_len(const uint16_t* buf, uint32_t len) :
+		m_vec(len)
+	{
+		// Copy the search string to the internal vector
+		for (uint32_t i = 0; i < len; ++i) {
+			if (i < 0xff) {
+				m_vec[i] = buf[i] | 0xff00;
+			} else {
+				m_vec[i] = 0xffff; // For now, match everything
+			}
+		}
+	}
+
+	wildcard_const_len(std::initializer_list<uint16_t>&& ilist) :
+		m_vec(ilist)
+	{}
+
+	virtual uint32_t length() const override { return m_vec.size(); }
+
+	virtual uint32_t first_match(const buffer& haystack, uint32_t start = 0) const override
+	{
+		const uint32_t needle_len = length();
+		const uint32_t buf_len = haystack.length();
+
+		if (needle_len > buf_len) {
+			return UINT32_MAX;
+		}
+
+		uint32_t upto = buf_len - needle_len;
+		for (uint32_t i = start; i <= upto; ++i) {
+			bool found = true;
+			for (uint32_t j = 0; j < needle_len; ++j) {
+				if (!byte_match(haystack[i + j], m_vec[j])) {
+					found = false;
+					break;
+				}
+			}
+			if (found) {
+				return i;
+			}
+		}
+		return UINT32_MAX;
+	}
+
+	virtual std::list<uint32_t> match(const buffer& haystack, uint32_t start = 0) const override
+	{
+		std::list<uint32_t> ret;
+		const uint32_t needle_len = length();
+		const uint32_t buf_len = haystack.length();
+
+		if (needle_len > buf_len) {
+			return ret;
+		}
+
+		uint32_t upto = buf_len - needle_len;
+		for (uint32_t i = start; i <= upto; ++i) {
+			bool found = true;
+			for (uint32_t j = 0; j < needle_len; ++j) {
+				if (!byte_match(haystack[i + j], m_vec[j])) {
+					found = false;
+					break;
+				}
+			}
+			if (found) {
+				ret.push_back(i);
+			}
+		}
+		return ret;
+	}
+
+	inline bool byte_match(uint8_t haystack, uint16_t needle) const
+	{
+		uint8_t mask = (needle >> 8) & 0xff;
+
+		if ((haystack & mask) == (needle & mask)) {
+			return true;
+		}
+		return false;
+	}
+
+private:
+	std::vector<uint16_t> m_vec;
 };

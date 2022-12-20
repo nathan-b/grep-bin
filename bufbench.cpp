@@ -36,7 +36,9 @@ static void bm_create_arraybuf_from_byte_buffer(benchmark::State& state)
 
 	for (auto _ : state) {
 		arraybuf ab(nullptr, len);
+		benchmark::DoNotOptimize(&ab[0]);
 		memcpy(&ab[0], test_buf, len);
+		benchmark::ClobberMemory();
 	}
 
 	delete[] test_buf;
@@ -51,6 +53,7 @@ static void bm_create_arraybuf_from_vector(benchmark::State& state)
 
 	for (auto _ : state) {
 		arraybuf ab(vec);
+		benchmark::DoNotOptimize(&ab[0]);
 	}
 }
 BENCHMARK(bm_create_arraybuf_from_vector);
@@ -169,5 +172,34 @@ static void bm_find_all_needle_long(benchmark::State& state)
 	}
 }
 BENCHMARK(bm_find_all_needle_long)->Arg(65536)->Arg(67108864)->Arg(1073741824);
+
+static void bm_find_all_needle_long_wcl_exact(benchmark::State& state)
+{
+	const uint32_t len = state.range(0);
+	std::vector<uint8_t> vec = get_vec(len);
+	arraybuf ab(vec);
+	std::list<uint32_t> result;
+	std::initializer_list<char> needle_list =
+		{'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k',
+		 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w'};
+
+	std::vector<uint16_t> wildcard_vec(needle_list.size());
+	uint32_t i = 0;
+	for (char c : needle_list) {
+		wildcard_vec[i++] = 0xff00 | c;
+	}
+
+	wildcard_const_len wcl(wildcard_vec.data(), wildcard_vec.size());
+	uint32_t expected_length = len / 52;
+
+	for (auto _ : state) {
+		result = wcl.match(ab);
+		if (result.size() != expected_length) {
+			state.SkipWithError("Could not match string");
+			break;
+		}
+	}
+}
+BENCHMARK(bm_find_all_needle_long_wcl_exact)->Arg(65536)->Arg(67108864)->Arg(1073741824);
 
 BENCHMARK_MAIN();
