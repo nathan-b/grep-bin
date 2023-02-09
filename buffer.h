@@ -670,7 +670,60 @@ public:
 	 */
 	static std::unique_ptr<wildcard_const_len> from_string(const std::string& str)
 	{
-		return nullptr;
+		std::string numstr = str;
+
+		// The string might start with 0x, remove that from the length
+		if (str.starts_with("0x") || str.starts_with("0X")) {
+			numstr = str.substr(2);
+		}
+
+		uint32_t len = (numstr.length() + 1) / 2;
+		if (len == 0) {
+			return nullptr;
+		}
+
+		std::vector<uint16_t> vec(len);
+		uint32_t vecp = len - 1;
+		enum {
+			LOW,
+			HIGH
+		} pos = LOW;
+		uint16_t val;
+
+		for (auto it = numstr.rbegin(); it != numstr.rend(); ++it) {
+			char_type ctype = get_char_type(*it);
+			if (ctype == INVALID) {
+				return nullptr;
+			}
+			if (pos == LOW) {
+				if (ctype == WILDCARD) {
+					val = 0;
+				} else if (ctype == DIGIT) {
+					val = 0x0f00 | buffer_conversion::hex_char_to_num(*it);
+				}
+				pos = HIGH;
+			} else { // pos == HIGH
+				if (ctype == WILDCARD) {
+					// Nothing to do...
+				} else if (ctype == DIGIT) {
+					uint8_t r = buffer_conversion::hex_char_to_num(*it);
+					val += r * 0x10;
+					val |= 0xf000;
+				}
+				vec[vecp--] = val;
+				pos = LOW;
+			}
+		}
+		if (pos == HIGH) {
+			vec[vecp--] = val;
+		}
+
+		if (vecp != UINT32_MAX) {
+			return nullptr;
+		}
+
+		// We now have a vector of wildcard values
+		return std::make_unique<wildcard_const_len>(vec);
 	}
 
 	/**
@@ -715,6 +768,10 @@ public:
 
 	wildcard_const_len(std::initializer_list<uint16_t>&& ilist) :
 		m_vec(ilist)
+	{}
+
+	wildcard_const_len(std::vector<uint16_t>& vec) :
+		m_vec(vec)
 	{}
 
 	virtual uint32_t length() const override { return m_vec.size(); }

@@ -452,6 +452,176 @@ TEST(wcl_needle, match)
 	}
 }
 
+#define arrlen(_arr) (sizeof(_arr) / sizeof(_arr[0]))
+
+TEST(wcl_needle, from_string)
+{
+	uint8_t corpus[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, // 0
+						 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, // 8
+						 0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80, // 16
+						 0x98, 0xa4, 0xbc, 0xc7, 0xd9, 0xef, 0xf1, 0xff, // 24
+						 0x6f, 0x00, 0x1e, 0xef, 0x2b, 0x94, 0x00, 0x00, // 32
+						 0x00, 0x04, 0x6c, 0x69, 0x73, 0x74, 0x00, 0x00, // 40
+						 0x07, 0x2b, 0x95, 0x00, 0x00, 0x00, 0x00, 0x49, // 48
+						 0x6c, 0x6c, 0x69, 0x73, 0x61, 0x20, 0x4b, 0x65, // 56
+						 0x70, 0x70, 0x65, 0x49, 0x6f, 0x00, 0x01, 0x9f };//64
+	arraybuf ab(corpus, sizeof(corpus));
+
+	// Single byte, high nibble
+	{
+		auto wcl = wildcard_const_len::from_string("0x.f");
+		ASSERT_TRUE(wcl);
+		ASSERT_EQ(1U, wcl->length());
+		uint32_t expected[] = {15, 29, 31, 32, 35, 68, 71};
+
+		auto rlist = wcl->match(ab);
+
+		ASSERT_EQ(arrlen(expected), rlist.size());
+
+		for (uint32_t i = 0; i < arrlen(expected); ++i) {
+			uint32_t idx = rlist.front();
+			rlist.pop_front();
+			ASSERT_EQ(expected[i], idx);
+		}
+	}
+
+	// Single byte, low nibble
+	{
+		auto wcl = wildcard_const_len::from_string("0xf.");
+		ASSERT_TRUE(wcl);
+		ASSERT_EQ(1U, wcl->length());
+		uint32_t expected[] = {30, 31};
+
+		auto rlist = wcl->match(ab);
+
+		ASSERT_EQ(arrlen(expected), rlist.size());
+
+		for (uint32_t i = 0; i < arrlen(expected); ++i) {
+			uint32_t idx = rlist.front();
+			rlist.pop_front();
+			ASSERT_EQ(expected[i], idx);
+		}
+	}
+
+	// Multi-byte, no wildcard
+	{
+		auto wcl = wildcard_const_len::from_string("0x6f00");
+		ASSERT_TRUE(wcl);
+		ASSERT_EQ(2U, wcl->length());
+		uint32_t expected[] = {32, 68};
+
+		auto rlist = wcl->match(ab);
+
+		ASSERT_EQ(arrlen(expected), rlist.size());
+
+		for (uint32_t i = 0; i < arrlen(expected); ++i) {
+			uint32_t idx = rlist.front();
+			rlist.pop_front();
+			ASSERT_EQ(expected[i], idx);
+		}
+	}
+
+	// Multi-byte, wildcard
+	{
+		auto wcl = wildcard_const_len::from_string("0x6.70");
+		ASSERT_TRUE(wcl);
+		ASSERT_EQ(2U, wcl->length());
+		uint32_t expected[] = {21, 63};
+
+		auto rlist = wcl->match(ab);
+
+		ASSERT_EQ(arrlen(expected), rlist.size());
+
+		for (uint32_t i = 0; i < arrlen(expected); ++i) {
+			uint32_t idx = rlist.front();
+			rlist.pop_front();
+			ASSERT_EQ(expected[i], idx);
+		}
+	}
+
+	// Multi-byte, multi-wildcard
+	{
+		auto wcl = wildcard_const_len::from_string("0x6.7.");
+		ASSERT_TRUE(wcl);
+		ASSERT_EQ(2U, wcl->length());
+		uint32_t expected[] = {21, 43, 58, 63};
+
+		auto rlist = wcl->match(ab);
+
+		ASSERT_EQ(arrlen(expected), rlist.size());
+
+		for (uint32_t i = 0; i < arrlen(expected); ++i) {
+			uint32_t idx = rlist.front();
+			rlist.pop_front();
+			ASSERT_EQ(expected[i], idx);
+		}
+	}
+
+	// Long string with wildcards
+	{
+		const std::string wcs = "0x70.*654..f.*01.f";
+		auto wcl = wildcard_const_len::from_string(wcs);
+		ASSERT_TRUE(wcl);
+		ASSERT_EQ(8U, wcl->length());
+		uint32_t expected[] = {64};
+
+		auto rlist = wcl->match(ab);
+
+		ASSERT_EQ(arrlen(expected), rlist.size());
+
+		for (uint32_t i = 0; i < arrlen(expected); ++i) {
+			uint32_t idx = rlist.front();
+			rlist.pop_front();
+			ASSERT_EQ(expected[i], idx);
+		}
+	}
+
+	// Wildcards with no match
+	{
+		auto wcl = wildcard_const_len::from_string("6..f0");
+		ASSERT_TRUE(wcl);
+		ASSERT_EQ(3U, wcl->length());
+
+		auto rlist = wcl->match(ab);
+
+		ASSERT_EQ(0U, rlist.size());
+	}
+
+	// String that's all wildcards
+	{
+		auto wcl = wildcard_const_len::from_string("....");
+		ASSERT_TRUE(wcl);
+		ASSERT_EQ(2U, wcl->length());
+		// OK so this string is going to match any 2-byte sequence
+		auto rlist = wcl->match(ab);
+
+		ASSERT_EQ(71U, rlist.size());
+
+		for (uint32_t i = 0; i < 71; ++i) {
+			uint32_t idx = rlist.front();
+			rlist.pop_front();
+			ASSERT_EQ(i, idx);
+		}
+	}
+
+	// Single dot
+	{
+		auto wcl = wildcard_const_len::from_string(".");
+		ASSERT_TRUE(wcl);
+		ASSERT_EQ(1U, wcl->length());
+		// The unspecified high bits should be filled in with a wildcard
+		auto rlist = wcl->match(ab);
+
+		ASSERT_EQ(72U, rlist.size());
+
+		for (uint32_t i = 0; i < 72; ++i) {
+			uint32_t idx = rlist.front();
+			rlist.pop_front();
+			ASSERT_EQ(i, idx);
+		}
+	}
+}
+
 int main(int argc, char** argv)
 {
 	setup();
